@@ -141,7 +141,7 @@ class RoutingJson:
                 {1}
 
                 <script type="text/javascript">
-                    setInterval('window.location.reload()', 500);
+                    setInterval('window.location.reload()', 2000);
                 </script>
             </body>
         </html>
