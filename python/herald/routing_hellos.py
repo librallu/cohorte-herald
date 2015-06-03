@@ -60,7 +60,7 @@ _logger = logging.getLogger(__name__)
 @Property('_filters', herald.PROP_FILTERS, ['herald/routing/reply/*'])
 @Property('_hello_delay', 'hello_delay', 3)
 @Property('_hello_timeout', 'hello_timeout', 10)
-@Property('_granularity', 'metric_granularity', .03)
+@Property('_granularity', 'metric_granularity', .00003)
 @Instantiate('herald-routing-hellos')
 class Hellos:
     """

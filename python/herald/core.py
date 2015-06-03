@@ -418,6 +418,7 @@ class Herald(object):
 
         :param message: A MessageReceived bean forged by the transport
         """
+        # FIXME add routing test (i.e. check if it's the final receiver)
         with self.__gc_lock:
             if message.uid in self.__treated:
                 # Message already handled, maybe it has been received by

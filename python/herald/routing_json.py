@@ -36,10 +36,20 @@ __docformat__ = "restructuredtext en"
 # ------------------------------------------------------------------------------
 
 from pelix.ipopo.decorators import ComponentFactory, Provides, \
-    Validate, Invalidate, Instantiate, Requires
+    Validate, Invalidate, Instantiate, Requires, Property
 import herald
 import logging
 import herald.routing_constants
+import pelix.remote
+import json
+
+try:
+    # Python 3
+    import urllib.parse as urlparse
+
+except ImportError:
+    # Python 2
+    import urlparse
 
 # ------------------------------------------------------------------------------
 
@@ -50,8 +60,11 @@ _logger = logging.getLogger(__name__)
 
 @ComponentFactory("herald-routing-info-factory")
 @Provides(herald.routing_constants.ROUTING_JSON)  # for getting messages of type reply
+@Provides(['pelix.http.servlet'])
 @Requires('_routing', herald.routing_constants.ROUTING_INFO)  # for sending messages
 @Requires('_hellos', herald.routing_constants.GET_NEIGHBOURS_AVAILABLE)  # for metrics
+@Property('_path', 'pelix.http.path', "/routing")
+@Property('_reject', pelix.remote.PROP_EXPORT_REJECT, ['pelix.http.servlet', herald.SERVICE_DIRECTORY_LISTENER])
 @Instantiate('herald-routing-info')
 class RoutingJson:
     """
@@ -71,6 +84,10 @@ class RoutingJson:
         """
         # remote objects
         self._routing = None
+        self._hellos = None
+
+        # local objects
+        self._path = None
 
     @Validate
     def validate(self, context):
@@ -87,6 +104,68 @@ class RoutingJson:
         :return: nothing
         """
         pass
+
+    def _html_neighbours(self):
+        """
+        :return: html code for neighbours
+        """
+        neighbours = ""
+        for i in self.get_json_neighbours():
+            neighbours += """
+                <tr>
+                    <td>{0}</td>
+                    <td>{1} secs</td>
+                </tr>
+            """.format(i, self.get_json_neighbours()[i])
+
+        return """
+        <table border="1" style="width:100%">
+            <tr>
+                <th>Neighbour UID</th>
+                <th>Metric</th>
+            </tr>
+            {}
+        </table>
+        """.format(neighbours)
+
+    def _make_html(self):
+        return """
+        <html>
+            <head>
+                <title>{0}</title>
+            </head>
+            <body>
+                <h1>Routing information</h1>
+
+                <h2>Neighbours</h2>
+                {1}
+
+                <script type="text/javascript">
+                    setInterval('window.location.reload()', 500);
+                </script>
+            </body>
+        </html>
+        """.format("routing information", self._html_neighbours())
+
+    @staticmethod
+    def _make_json():
+        return "{'msg': 'hello world !'}"
+
+    def do_GET(self, request, response):
+        """
+        Handle a GET
+        :param request: input request
+        :param response: output request
+        :return: nothing
+        """
+        query = request.get_path()[len(self._path)+1:].split('/')
+        action = query[0].lower()
+        if action == "html":  # if html ask
+            content = self._make_html()
+            response.send_content(200, content, mime_type="text/html")
+        else:  # JSON ask
+            content = self._make_json()
+            response.send_content(200, content, mime_type="text/json")
 
     def get_json_routing(self):
         """
