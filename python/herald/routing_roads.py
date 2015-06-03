@@ -155,6 +155,14 @@ class Roads:
         # if there is no known roads
         return None
 
+    def get_next_hops(self):
+        """
+        get a dict() object of next_hop for all known
+        pairs.
+        :return: returns peer -> next_hop
+        """
+        return self._next_hop
+
     def get_accessible_peers(self):
         """
         :return: a dict object peer -> delay

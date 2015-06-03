@@ -98,6 +98,7 @@ class RoutingJson:
         """
         :return: a JSON object (dict) that contains the next hops
         """
+        return self._routing.get_next_hops()
 
     def get_json_neighbours(self):
         """
