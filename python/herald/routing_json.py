@@ -101,18 +101,22 @@ class RoutingJson:
         """
         neighbours = ""
         for i in self.get_json_neighbours():
+            is_router = i in self._hellos.get_neighbours_routers()
+            metric = self.get_json_neighbours()[i]
             neighbours += """
                 <tr>
                     <td>{0}</td>
                     <td>{1} secs</td>
+                    <td>{2}</td>
                 </tr>
-            """.format(i, self.get_json_neighbours()[i])
+            """.format(i, metric, is_router)
 
         return """
         <table border="1" style="width:100%">
             <tr>
                 <th>Neighbour UID</th>
                 <th>Metric</th>
+                <th>Router?</th>
             </tr>
             {}
         </table>
@@ -179,7 +183,8 @@ class RoutingJson:
         """
         neighbour_list = [
             '\t\t{"uid": "' + i + '", "metric": ' +
-            str(self.get_json_neighbours()[i]) + '}'
+            str(self.get_json_neighbours()[i]) + '", "router?": ' +
+            str(i in self._hellos.get_neighbours_routers()) + '}'
             for i in self.get_json_neighbours()
         ]
         return ",\n".join(neighbour_list)
