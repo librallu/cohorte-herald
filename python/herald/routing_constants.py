@@ -46,18 +46,3 @@ ROUTING_JSON = "herald.routing.routing_json"
 Return a json string containing the routing
 table of the node
 """
-
-def print_message(logger, message):
-    """
-    Print message in a logger
-    :param logger: logger to use
-    :param message: message to print
-    :return: nothing
-    """
-    pass
-    n = 25
-    # logger.info("="*n)
-    # logger.info("Message received {} :".format(message.uid))
-    # logger.info("subject: {}".format(message.subject))
-    # logger.info("content: {}".format(message.content))
-    # logger.info("="*n)

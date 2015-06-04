@@ -48,21 +48,6 @@ from herald.beans import Message
 
 _logger = logging.getLogger(__name__)
 
-def print_message(logger, message):
-    """
-    Print message in a logger
-    :param logger: logger to use
-    :param message: message to print
-    :return: nothing
-    """
-    pass
-    n = 25
-    logger.info("="*n)
-    logger.info("Message received {} :".format(message.uid))
-    logger.info("subject: {}".format(message.subject))
-    logger.info("content: {}".format(message.content))
-    logger.info("="*n)
-
 # ------------------------------------------------------------------------------
 
 
@@ -83,6 +68,16 @@ class Roads:
     a distant peer.
     It can be used by calling the method get_next_hop(peer) to
     get the next hop to accessing peer.
+
+    ROUTING_INFO service provides
+    -----------------------------
+
+    - change_road(next_hop, metric, destination)
+            ! should be used only if you know what you do !
+
+    - get_accessible_peers():
+    - get_next_hops()
+    - get_next_hop_to(destination)
     """
 
     def __init__(self):
@@ -99,6 +94,9 @@ class Roads:
         self._loop_thread = None    # looping thread
         self._metric = None         # destination -> time (distance announced)
         self._next_hop = None       # destination -> neighbour (next hop)
+
+        # properties
+        self._road_delay = None
 
     @Validate
     def validate(self, context):
@@ -126,7 +124,8 @@ class Roads:
         self._active = False
         self._metric.clear()
         self._next_hop.clear()
-        self._loop_thread.join()  # wait for looping thread to stop current iteration
+        # wait for looping thread to stop current iteration
+        self._loop_thread.join()
 
     def _loop(self):
         """
@@ -144,7 +143,8 @@ class Roads:
     def get_next_hop_to(self, destination):
         """
         :param: destination: a given destination uid
-        :return: The next hop to the destination. None if there is no known roads
+        :return: The next hop to the destination.
+            None if there is no known roads
         """
         # if it's a direct neighbour
         if self._hellos.is_reachable(destination):
@@ -170,7 +170,9 @@ class Roads:
         res = {}
         for i in self._metric:
             if self._hellos.is_reachable(self._next_hop[i]):
-                res[i] = self._metric[i]+self._hellos.get_neighbour_metric(self._next_hop[i])
+                distance = self._hellos.get_neighbour_metric(self._next_hop[i])
+                res[i] = self._metric[i] + distance
+
         return res
 
     def _send_roads_to(self, target):
@@ -183,16 +185,20 @@ class Roads:
             if self._next_hop[i] != target:
                 # if the gateway is reachable
                 if self._hellos.is_reachable(self._next_hop[i]):
-                    roads[i] = self._metric[i]+self._hellos.get_neighbour_metric(self._next_hop[i])
+                    next_hop = self._next_hop[i]
+                    distance = self._hellos.get_neighbour_metric(next_hop)
+                    roads[i] = self._metric[i] + distance
         # add neighbours to message
         for i in self._hellos.get_neighbours():
             if i != target:
-                if i not in roads or roads[i] > self._hellos.get_neighbours()[i]:
-                    roads[i] = self._hellos.get_neighbours()[i]
+                distance = self._hellos.get_neighbour_metric(i)
+                if i not in roads or roads[i] > distance:
+                    roads[i] = self._hellos.get_neighbour_metric(i)
         msg = Message('herald/routing/roads/', content=str(roads))
-        _logger.info("------ SENDING -------")
-        print_message(_logger, msg)
-        self._herald.fire(target, msg)
+        try:
+            self._herald.fire(target, msg)
+        except (KeyError, herald.exceptions.NoTransport):
+            self._hellos.set_not_reachable(target)
 
     def change_road(self, next_hop, metric, destination):
         """
@@ -210,7 +216,7 @@ class Roads:
                 del self._next_hop[destination]
             if destination in self._metric:
                 del self._metric[destination]
-            _logger.info("Deleting road to {}".format(destination))
+            _logger.info("Deleting road to %s", destination)
         else:
             self._next_hop[destination] = next_hop
             self._metric[destination] = metric
@@ -247,16 +253,5 @@ class Roads:
 
         self._next_hop = next_hop
         self._metric = metric
-        self.print_routes()
         self._lock.release()
 
-    def print_routes(self):
-        """
-        print route tables
-        :return: nothing
-        """
-        n = 30
-        _logger.info("*"*n)
-        _logger.info("next_hop: {}".format(self._next_hop))
-        _logger.info("metric: {}".format(self._metric))
-        _logger.info("*"*n)

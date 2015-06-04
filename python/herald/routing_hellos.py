@@ -76,7 +76,17 @@ class Hellos:
 
      - keep the current asking uid for checking if
        the peer don't respond to an other message.
-    """
+
+    GET_NEIGHBOURS_AVAILABLE provides :
+    -----------------------------------
+
+    - get_neighbour_metric(neighbour)
+    - get_neighbours()
+    - is_reachable(neighbour)
+    - get_neighbours_routers()
+    - change_metric(peer_uid, new_value)
+    - set_not_reachable(neighbour)
+"""
 
     def __init__(self):
         """
@@ -93,6 +103,11 @@ class Hellos:
         self._active = None         # True if looping thread active
         self._last_ask = None       # peer uid -> datetime
         self._routers = None        # peer set that are routers
+
+        # Properties
+        self._hello_timeout = None
+        self._granularity = None
+        self._hello_delay = None
 
     @Validate
     def validate(self, context):
@@ -120,7 +135,8 @@ class Hellos:
         """
         self._active = False
         self._neighbours.clear()
-        self._loop_thread.join()  # wait for looping thread to stop current iteration
+        # wait for looping thread to stop current iteration
+        self._loop_thread.join()
 
     def _extract_info_from_reply(self, peer_uid, subject):
         """
@@ -146,10 +162,10 @@ class Hellos:
         An Herald reply message has been received.
         It measures delay between sending and answer receiving.
         """
-        herald.routing_constants.print_message(_logger, message)
         sender_uid = message.sender
         if sender_uid in self._last_ask:
-            self._change_metric(sender_uid, self._time_between(self._last_ask[sender_uid]))
+            delay = self._time_between(self._last_ask[sender_uid])
+            self.change_metric(sender_uid, delay)
             self._lock.acquire()
             del self._last_ask[sender_uid]
             self._extract_info_from_reply(sender_uid, message.subject)
@@ -159,9 +175,12 @@ class Hellos:
         """
         returns a neighbour metric
         :param neighbour: given neighbour
-        :return: known metric (latency) from neighbour None if there is no connection
+        :return: known metric (latency) from neighbour
+            None if there is no connection
         """
-        if neighbour not in self._neighbours or self._neighbours[neighbour] > self._hello_timeout:
+        if neighbour not in self._neighbours:
+            return None
+        if self._neighbours[neighbour] >= self._hello_timeout:
             return None
         return self._neighbours[neighbour]
 
@@ -172,14 +191,15 @@ class Hellos:
 
         potential bug: return value is a reference with an internal object.
         """
-        return self._neighbours
+        return [i for i in self._neighbours if self.is_reachable(i)]
 
     def is_reachable(self, neighbour):
         """
         :param neighbour: neighbour to check
         :return: return true if neighbour is reachable, false elsewhere
         """
-        return neighbour in self._neighbours and self._neighbours[neighbour] < self._hello_timeout
+        return neighbour in self._neighbours and \
+            self._neighbours[neighbour] < self._hello_timeout
 
     def get_neighbours_routers(self):
         """
@@ -195,9 +215,12 @@ class Hellos:
         :return: nothing
         """
         self._last_ask[target.uid] = datetime.datetime.now()
-        self._herald.fire(target, msg)
+        try:
+            self._herald.fire(target, msg)
+        except herald.exceptions.NoTransport:  # no more link
+            self.set_not_reachable(target.uid)
 
-    def _change_metric(self, peer_uid, new_value):
+    def change_metric(self, peer_uid, new_value):
         """
         change the metric of a given pair for a given value.
         It changes the value if it's greater than _hello_timeout
@@ -206,13 +229,20 @@ class Hellos:
         :param new_value: new metric value
         :return: nothing
         """
-        # _logger.info("changing metric for {} to {}".format(peer_uid, new_value))
         if peer_uid in self._neighbours:
-            if abs(new_value-self._neighbours[peer_uid]) >= self._granularity or new_value >= self._hello_timeout:
+            diff = abs(new_value-self._neighbours[peer_uid])
+            if diff >= self._granularity or new_value >= self._hello_timeout:
                 self._neighbours[peer_uid] = new_value
         else:
             self._neighbours[peer_uid] = new_value
-        # _logger.info("new granularity : {}".format(self._neighbours[peer_uid]))
+
+    def set_not_reachable(self, peer_uid):
+        """
+        set a pair not reachable in neighbourhood.
+        :param peer_uid: peer to set
+        :return: nothing
+        """
+        self.change_metric(peer_uid, self._hello_timeout)
 
     @staticmethod
     def _time_between(old_time):
@@ -237,9 +267,10 @@ class Hellos:
                     # we don't send messages if we are waiting for one
                     self._send_hello(target, Message('herald/routing/hello/'))
                     # _logger.info("hello sent to {}".format(target))
-                elif self._time_between(self._last_ask[target.uid]) > self._hello_timeout:
+                elif self._time_between(self._last_ask[target.uid]) \
+                        > self._hello_timeout:
                     # in this case, we have the timeout elapsed
-                    self._change_metric(target.uid, self._hello_timeout)
+                    self.set_not_reachable(target.uid)
                     self._send_hello(target, Message('herald/routing/hello/'))
                     # _logger.info("hello sent to {}".format(target))
             # wait a moment
