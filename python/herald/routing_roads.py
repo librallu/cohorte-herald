@@ -127,6 +127,19 @@ class Roads:
         # wait for looping thread to stop current iteration
         self._loop_thread.join()
 
+    def _delete_neighbours_from_roads(self):
+        """
+        delete all known neighbours from roads
+        :return: nothing
+        """
+        self._lock.acquire()
+        for i in self._hellos.get_neighbours():
+            if i in self._metric:
+                del self._metric[i]
+            if i in self._next_hop:
+                del self._next_hop[i]
+        self._lock.release()
+
     def _loop(self):
         """
         main loop of the road sender daemon.
@@ -161,12 +174,14 @@ class Roads:
         pairs.
         :return: returns peer -> next_hop
         """
+        self._delete_neighbours_from_roads()
         return self._next_hop
 
     def get_accessible_peers(self):
         """
         :return: a dict object peer -> delay
         """
+        self._delete_neighbours_from_roads()
         res = {}
         for i in self._metric:
             if self._hellos.is_reachable(self._next_hop[i]):
@@ -179,6 +194,7 @@ class Roads:
         """
         Send road message to a target
         """
+        self._delete_neighbours_from_roads()
         roads = {}
         for i in self._next_hop:
             # if the receiver is not the gateway
@@ -236,7 +252,7 @@ class Roads:
         next_hop = {}  # a new self._next_hop
         metric = {}  # a new self._metric
         for i in self._next_hop:
-            if i != sender_uid:
+            if self._next_hop[i] != sender_uid:
                 next_hop[i] = self._next_hop[i]
                 metric[i] = self._metric[i]
         # add all new roads from sender_uid
