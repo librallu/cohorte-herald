@@ -59,6 +59,9 @@ import re
 import threading
 import time
 
+# routing imports
+import herald.routing_constants
+
 # ------------------------------------------------------------------------------
 
 _logger = logging.getLogger(__name__)
