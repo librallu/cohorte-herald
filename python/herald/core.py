@@ -174,6 +174,7 @@ class _WaitingPost(object):
 @Provides(herald.SERVICE_HERALD, '_controller')
 @Requires('_directory', herald.SERVICE_DIRECTORY)
 @Requires('_listeners', herald.SERVICE_LISTENER, True, True)
+@Requires('_routing', herald.routing_constants.ROUTING_INFO, optional=True)
 @RequiresMap('_transports', herald.SERVICE_TRANSPORT, herald.PROP_ACCESS_ID,
              False, False, True)
 @Instantiate("herald-core")
@@ -419,6 +420,7 @@ class Herald(object):
         :param message: A MessageReceived bean forged by the transport
         """
         # FIXME add routing test (i.e. check if it's the final receiver)
+        # FIXME and if it's not a router keep default road
         with self.__gc_lock:
             if message.uid in self.__treated:
                 # Message already handled, maybe it has been received by
@@ -437,7 +439,6 @@ class Herald(object):
                     # Error message: handle it, but don't propagate it
                     self._handle_error(message, parts[2])
                     return
-
                 elif parts[1] == 'directory':
                     # Directory update message
                     self._handle_directory_message(message, parts[2])
@@ -445,8 +446,33 @@ class Herald(object):
             # Not enough arguments for a directory update: ignore
             pass
 
-        # Notify others of the message
-        self.__notify(message)
+        # if the message needs to be routed
+        if self._is_destination(message):
+            # Notify others of the message
+            self.__notify(message)
+        elif self._routing is None:
+            # if the message needs to be routed but pair can't do it.
+            _logger.critical("=== ROUTING: NON DESTINATION AND NON ROUTER")
+        else:
+            self._route_message(message)
+
+    def _is_destination(self, message):
+        """
+        :param message: message to ckeck
+        :return: True if current pair is the final destination of
+        the message, False elsewhere
+        """
+        _logger.critical("TODO: _is_destination")
+        return True
+
+    def _route_message(self, message):
+        """
+        route the message according to the routing module
+        and the message's destination.
+        :param message: message to be routed
+        :return: Nothing
+        """
+        _logger.critical("TODO: _route_message")
 
     def _handle_error(self, message, kind):
         """
@@ -454,7 +480,12 @@ class Herald(object):
 
         :param message: MessageReceived bean, received from another peer
         :param kind: Kind of error
+
+        possible kinds:
+            - 'no-listener': means that there is no
+                             listener found for this subject
         """
+        # FIXME maybe it will be useful to check 'not-router' error message
         if kind == 'no-listener':
             # No listener found for a given message
             # ... release send() calls
@@ -487,6 +518,9 @@ class Herald(object):
 
         :param message: Message received from another peer
         :param kind: Kind of directory message
+
+        possible kinds :
+            - 'bye': a peer is going away
         """
         if kind == 'bye':
             # A peer is going away
@@ -560,6 +594,7 @@ class Herald(object):
         try:
             transport = self._transports[reply_to.access]
         except KeyError:
+            # FIXME maybe we need to check if the message can be routed
             # Reception transport is not available anymore...
             raise NoTransport(beans.Target(uid=reply_to.sender),
                               "No reply transport for access {0}"
@@ -571,11 +606,12 @@ class Herald(object):
                 peer = self._directory.get_peer(reply_to.sender)
             except KeyError:
                 peer = None
-
+                # FIXME idem
             try:
                 # Send the reply
                 transport.fire(peer, message, reply_to.extra)
             except InvalidPeerAccess:
+                # FIXME idem
                 raise NoTransport(beans.Target(uid=reply_to.sender),
                                   "Can't reply to {0} using {1} transport"
                                   .format(peer, reply_to.access))
@@ -612,16 +648,19 @@ class Herald(object):
                 transport = self._transports[access]
             except KeyError:
                 # No transport for this kind of access
+                # FIXME maybe we need to check if the message can be routed
                 pass
             else:
                 try:
                     # Call it
                     transport.fire(peer, message)
                 except InvalidPeerAccess as ex:
+                    # FIXME maybe we need to check if the message can be routed
                     # Transport can't read peer access data
                     _logger.debug("Error reading access for transport %s: %s",
                                   access, ex)
                 except Exception as ex:
+                    # FIXME maybe we need to check if the message can be routed
                     # Exception during transport
                     _logger.info("Error using transport %s: %s", access, ex)
                 else:
@@ -629,6 +668,7 @@ class Herald(object):
                     break
         else:
             # No transport for those accesses
+            # FIXME maybe we need to check if the message can be routed
             raise NoTransport(beans.Target(uid=peer.uid),
                               "No working transport found for peer {0}"
                               .format(peer))
@@ -645,6 +685,7 @@ class Herald(object):
         :raise KeyError: Unknown group
         :raise NoTransport: No transport found to send the message
         """
+        # FIXME check routing later in there
         # Get all peers known in the group
         all_peers = self._directory.get_peers_for_group(group)
         if not all_peers:
@@ -926,6 +967,7 @@ class Herald(object):
             self.fire(message.sender, beans.Message(subject, content))
         except KeyError:
             # Convert KeyError to NoTransport
+            # FIXME consider using routing mechanism to test sending messages
             raise NoTransport(beans.Target(uid=message.sender),
                               "No access to reply to {0}"
                               .format(message.sender))

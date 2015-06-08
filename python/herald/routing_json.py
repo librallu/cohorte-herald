@@ -37,6 +37,9 @@ __docformat__ = "restructuredtext en"
 
 from pelix.ipopo.decorators import ComponentFactory, Provides, \
     Instantiate, Requires, Property
+
+from pelix.shell.core import ShellUtils  # for ascii tables
+
 import herald
 import logging
 import herald.routing_constants
@@ -50,13 +53,16 @@ _logger = logging.getLogger(__name__)
 
 
 @ComponentFactory("herald-routing-info-factory")
-# for getting messages of type reply
 @Provides(herald.routing_constants.ROUTING_JSON)
 @Provides(['pelix.http.servlet'])
-# for sending messages
-@Requires('_routing', herald.routing_constants.ROUTING_INFO)
+
+# shell commands
+@Provides(pelix.shell.SERVICE_SHELL_COMMAND)
+
 # for metrics
+@Requires('_routing', herald.routing_constants.ROUTING_INFO)
 @Requires('_hellos', herald.routing_constants.GET_NEIGHBOURS_AVAILABLE)
+
 @Property('_path', 'pelix.http.path', "/routing")
 @Property('_reject', pelix.remote.PROP_EXPORT_REJECT,
           ['pelix.http.servlet', herald.SERVICE_DIRECTORY_LISTENER])
@@ -81,6 +87,8 @@ class RoutingJson:
 
     Those methods give information about
     the routing algorithm on the router.
+
+    It also provides shell commands
     """
 
     def __init__(self):
@@ -94,6 +102,50 @@ class RoutingJson:
 
         # local objects
         self._path = None
+
+    def get_namespace(self):
+        """
+        Retrieves the name space of this command handler
+        """
+        return "herald"
+
+    def get_methods(self):
+        """
+        list all commands
+        :return: list of tuples of type (a,b)
+            a: command name
+            b: associated method
+        """
+        return [
+            ('get_neighbours', self.get_neighbours_shell),
+            ('get_distant', self.get_distant_shell)
+        ]
+
+    def get_neighbours_shell(self, io_handler):
+        """
+        :return: ascii table with columns : Neighbour UID, Metric, Router?
+        """
+        table = []
+        for i in self.get_json_neighbours():
+            table.append((
+                i,
+                self.get_json_neighbours()[i],
+                i in self._hellos.get_neighbours_routers()
+            ))
+        io_handler.write_line(ShellUtils.make_table(("Neighbour UID", "Metric", "Router?"), table))
+
+    def get_distant_shell(self, io_handler):
+        """
+        :return: ascii table with columns : peer UID, Next Hop, Metric
+        """
+        table = []
+        for i in self.get_json_routing():
+            table.append((
+                i,
+                self.get_json_routing()[i],
+                self.get_json_next_hop()[i]
+            ))
+        io_handler.write_line(ShellUtils.make_table(("Peer UID", "Metric", "Next Hop"), table))
 
     def _html_neighbours(self):
         """

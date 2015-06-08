@@ -36,7 +36,7 @@ __docformat__ = "restructuredtext en"
 # ------------------------------------------------------------------------------
 
 from pelix.ipopo.decorators import ComponentFactory, \
-    Provides, Instantiate, Property
+    Provides, Instantiate, Property, Requires
 import herald
 import logging
 import herald.routing_constants
@@ -50,8 +50,8 @@ _logger = logging.getLogger(__name__)
 
 @ComponentFactory("herald-routing-replies-factory")
 @Provides(herald.SERVICE_LISTENER)
+@Requires('_routing', herald.routing_constants.ROUTING_INFO, optional=True)
 @Property('_filters', herald.PROP_FILTERS, ['herald/routing/hello/*'])
-@Property('_router', 'is_router', 'R')
 @Instantiate('herald-routing-replies')
 class MessageHandler:
     """
@@ -65,17 +65,20 @@ class MessageHandler:
         """
         Sets up members
         """
-        self._router = None
+        self._routing = None
 
     def is_router(self):
         """
         :return: true if isolate is router, false elsewhere
         """
-        return self._router == 'R'
+        if self._routing is None:
+            return 'N'
+        else:
+            return 'R'
 
     def herald_message(self, herald_svc, message):
         """
         An Herald hello message has been received
         """
-        subject = 'herald/routing/reply/{}/'.format(self._router)
+        subject = 'herald/routing/reply/{}/'.format(self.is_router())
         herald_svc.reply(message, None, subject=subject)
