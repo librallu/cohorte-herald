@@ -116,7 +116,7 @@ It will create an instance of the fireServer component.
 
     In this case, we have an output like :
 
-    .. raw::
+    .. parsed-literal::
 
         $ bl
         +----+--------------------------------------------+--------+---------+
