@@ -227,6 +227,9 @@ class Herald(object):
         self.__listeners_lock = threading.Lock()
         self.__gc_lock = threading.Lock()
 
+        # routing: default gateway
+        self.gateway = None
+
     @Validate
     def _validate(self, context):
         """
@@ -423,7 +426,6 @@ class Herald(object):
         :param message: A MessageReceived bean forged by the transport
         """
         # FIXME add routing test (i.e. check if it's the final receiver)
-        # FIXME and if it's not a router keep default road
         with self.__gc_lock:
             if message.uid in self.__treated:
                 # Message already handled, maybe it has been received by
@@ -442,6 +444,9 @@ class Herald(object):
                     # Error message: handle it, but don't propagate it
                     self._handle_error(message, parts[2])
                     return
+                elif parts[1] == 'routing' and not self._is_router():
+                    # if as a non router, I get a router
+                    self.gateway = message.sender
                 elif parts[1] == 'directory':
                     # Directory update message
                     self._handle_directory_message(message, parts[2])
@@ -453,11 +458,17 @@ class Herald(object):
         if self._is_destination(message):
             # Notify others of the message
             self.__notify(message)
-        elif self._routing is None:
+        elif self._is_router():
+            self._route_message(message)
+        else:
             # if the message needs to be routed but pair can't do it.
             _logger.critical("=== ROUTING: NON DESTINATION AND NON ROUTER")
-        else:
-            self._route_message(message)
+
+    def _is_router(self):
+        """
+        :return: True if peer is router, False elsewhere
+        """
+        return self._routing is not None
 
     def _is_destination(self, message):
         """
@@ -465,7 +476,7 @@ class Herald(object):
         :return: True if current pair is the final destination of
         the message, False elsewhere
         """
-        _logger.critical("TODO: _is_destination")
+        # _logger.critical("TODO: _is_destination")
         return True
 
     def _route_message(self, message):
@@ -473,9 +484,14 @@ class Herald(object):
         route the message according to the routing module
         and the message's destination.
         :param message: message to be routed
-        :return: Nothing
+        :return: True if message has been routed successfully
+                 False elsewhere
         """
         _logger.critical("TODO: _route_message")
+        if self.is_router():  # send to the next hop
+            pass
+        else:  # send to the default gateway
+            pass
 
     def _handle_error(self, message, kind):
         """
