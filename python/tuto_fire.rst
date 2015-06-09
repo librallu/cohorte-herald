@@ -20,7 +20,7 @@ every seconds.
 
 We will also send messages directly from the shell.
 
-(all the source code is available on github **TODO: URLS here**)
+(all the source code is available on github https://github.com/librallu/cohorte-herald/blob/master/python/tuto_fire.rst)
 
 
 Server Side
