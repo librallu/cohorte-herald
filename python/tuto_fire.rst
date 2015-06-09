@@ -157,7 +157,7 @@ The fire command take The destination UID (we get it from the previous *peers* c
 It also takes a subject (here *herald/test/hello/* because it is the subjects our server listens)
 It finally takes a third argument that is the content of the message.
 
-As we can see, when the server receives correctly our message.
+As we can see, the server receives correctly our message.
 
 
 Conclusions
