@@ -90,9 +90,11 @@ class PingTest:
         :param _: context
         :return: nothing
         """
+        _logger.info("=== entering in invalidate ===")
         self._active = False
         # wait for looping thread to stop current iteration
         self._loop_thread.join()
+        _logger.info("=== quitting invalidate ===")
 
     def _loop(self):
         _logger.info("=== start main loop ===")

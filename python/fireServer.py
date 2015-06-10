@@ -63,7 +63,8 @@ class FireServer:
         :return:
         """
         print("== MESSAGE RECEIVED ==")
-        print(" content: "+message.content)
-        print(" subject: "+message.subject)
+        print(" content: ", message.content)
+        print(" subject: ", message.subject)
+        print(" message UID: ", message.uid)
         subject = 'herald/test/hello/reply/'
         herald_svc.reply(message, None, subject=subject)

@@ -505,6 +505,7 @@ class Herald(object):
                              listener found for this subject
         """
         # FIXME maybe it will be useful to check 'not-router' error message
+        # FIXME in case if a router send a Road message to a non router
         if kind == 'no-listener':
             # No listener found for a given message
             # ... release send() calls
