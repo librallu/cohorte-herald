@@ -14,6 +14,7 @@ This tutorial purpose is to show how to call methods from an other component.
 It also show how to run a thread in a component for repetitive tasks.
 
 For this, we have two components :
+
 - ``ping.py`` that provides a PING_PONG_SERVICE. In this case, it's just a
   method that counts the number of calls. i.e. At first call, it will return 1,
   at second call, it will return 2 etc.
