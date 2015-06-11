@@ -82,7 +82,8 @@ class Discovery:
         """
         self._devices_names = dict()
         self._lock = threading.Lock()
-        self._thread = herald.utils.LoopTimer(self._interval, self._search_devices)
+        self._thread = herald.utils.LoopTimer(self._interval,
+                                              self._search_devices)
         self._thread.start()
 
     @Invalidate
@@ -95,6 +96,10 @@ class Discovery:
         self._thread.cancel()
 
     def _search_devices(self):
+        """
+        update attributes with the different bluetooth pairs known in the
+        neighbourhood
+        """
         _logger.info("start searching devices...")
         devices = bluetooth.discover_devices(
             duration=self._discovery_duration,
