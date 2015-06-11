@@ -102,7 +102,8 @@ class Discovery:
         with self._lock:
             self._devices_names = dict()
             for i in devices:
-                self._devices_names[i[0]] = i[1]
+                if i[1] in self._filter:
+                    self._devices_names[i[0]] = i[1]
         _logger.info("devices: {}".format(self._devices_names))
 
 
