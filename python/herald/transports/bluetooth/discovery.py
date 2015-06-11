@@ -54,6 +54,7 @@ BLUETOOTH_DISCOVERY_SERVICE = "herald.transports.bluetooth.discovery"
 @ComponentFactory("herald-bluetooth-discovery-factory")
 @Provides(BLUETOOTH_DISCOVERY_SERVICE)
 @Property('_interval', 'time_interval', 3)
+@Property('_discovery_duration', 'discovery_duration', 5)
 @Property('_filter', 'filter', ['PYBOARD'])
 @Instantiate('herald-bluetooth-discovery-test')
 class Discovery:
@@ -66,6 +67,11 @@ class Discovery:
         self._thread = None
         self._lock = None           # for mutex
         self._devices_names = None  # map: MAC -> name
+
+        # properties
+        self._interval = None
+        self._filter = None
+        self._discovery_duration = None
 
     @Validate
     def validate(self, _):
@@ -90,13 +96,13 @@ class Discovery:
 
     def _search_devices(self):
         _logger.info("start searching devices...")
-        devices = bluetooth.discover_devices()
+        devices = bluetooth.discover_devices(
+            duration=self._discovery_duration,
+            lookup_names=True)
         with self._lock:
             self._devices_names = dict()
             for i in devices:
-                name = bluetooth.lookup_name(i)
-                if name:
-                    self._devices_names[i] = name
+                self._devices_names[i[0]] = i[1]
         _logger.info("devices: {}".format(self._devices_names))
 
 
