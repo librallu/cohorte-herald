@@ -58,6 +58,8 @@ import json
 import logging
 import time
 
+import bluetooth
+
 # ------------------------------------------------------------------------------
 
 _logger = logging.getLogger(__name__)
