@@ -25,7 +25,7 @@ Main application on PyBoard
 """
 
 # automata import
-import pyboard_automata
+import automata
 
 # pins declarations
 photo_pin = 'X12'
@@ -54,17 +54,27 @@ uart = pyb.UART(1, 38400)
 #         pyb.Pin(led_pin, pyb.Pin.OUT_PP).low()
 #         print("LED OFF")
 
+def to_string(msg):
+    msg = str(msg)
+    msg = msg[2:]
+    return msg[:-1]
+
 def put_message(msg):
+    print("sending:")
+    print(msg+SEPARATOR)
     uart.write(msg+SEPARATOR)
 
 def get_message():
     if not uart.any():
         return
     msg = uart.read()
-    automata.read(msg)
+    print(msg)
+    automata.read(to_string(msg))
     if not automata.any_message():
         return
     msg = automata.get_message()
+    print("automata ok")
+    print(msg)
     if msg == HELLO_MESSAGE:
         put_message(HELLO_MESSAGE)
     else:
@@ -72,8 +82,9 @@ def get_message():
 
 
 
-automata = pyboard_automata.SerialAutomata(SEPARATOR)
+automata = automata.SerialAutomata(to_string(SEPARATOR))
+
 while True:
     #  send_photo()
-    print(get_message())
-    pyb.delay(200)
+    get_message()
+    #  pyb.delay(200)
