@@ -34,6 +34,13 @@ HELLO_MESSAGE = '[[[HELLO]]]'
 DELIMITER = '|||'
 PORT = 1
 
+def to_string(msg):
+    if type(msg) is bytes:
+        msg = str(msg)
+        msg = msg[2:]
+        return msg[:-1]
+    else:
+        return msg
 
 class Connection:
 
@@ -50,13 +57,17 @@ class Connection:
                 there is an error when initialization connection.
         :return:
         """
+        print("starting init")
         self._timeout = timeout
         self._err_callback = err_callback
         self._mac = mac
         self._valid = False
         self._socket = None
         self._automata = SerialAutomata(DELIMITER)
+        print("init automata")
         self._thread = threading.Thread(target=self._init_connection)
+        self._thread.start()
+        print("ending init")
 
     def _init_connection(self):
         """
@@ -64,25 +75,29 @@ class Connection:
         - first: send a HELLO_MESSAGE to the device
         - second: wait a HELLO_MESSAGE from the device
         """
-        # connection with the peer
-        self._socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-        self._socket.connect((self._mac, PORT))
-        self._socket.settimeout = self._timeout
+        try:
+            # connection with the peer
+            self._socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+            self._socket.connect((self._mac, PORT))
+            self._socket.settimeout = self._timeout
 
-        # step 1 - send a HELLO_MESSAGE
-        self.send_message(HELLO_MESSAGE)
+            # step 1 - send a HELLO_MESSAGE
+            self.send_message(HELLO_MESSAGE)
 
-        # step 2 - wait a HELLO_MESSAGE
-        msg = self.receive_message()
-        while msg is not None and msg != HELLO_MESSAGE:
+            # step 2 - wait a HELLO_MESSAGE
             msg = self.receive_message()
-            print(msg)
-        if msg is None:
-            print("connection aborted with pair {}".format(self._mac))
-            self._err_callback()
-        else:
-            print("connection ok with pair {}".format(self._mac))
-            self._valid = True
+            while msg is not None and msg != HELLO_MESSAGE:
+                msg = self.receive_message()
+            if msg is None:
+                print("connection aborted with pair {}".format(self._mac))
+                self._err_callback()
+            else:
+                self._valid = True
+        except bluetooth.btcommon.BluetoothError:
+            if self._err_callback is None:
+                pass
+            else:
+                self._err_callback()
 
     def send_message(self, msg):
         """
@@ -97,11 +112,10 @@ class Connection:
             None if timeout passed
         """
         while not self._automata.any_message():
-            recv = self._socket.recv(1024)
+            recv = to_string(self._socket.recv(1))
             if recv == '':  # if timeout passed
                 print('connection({}): timeout passed'.format(self._mac))
                 return None
-            print("CONNECTION: RECV={}".format(recv))
             self._automata.read(recv)
         return self._automata.get_message()
 

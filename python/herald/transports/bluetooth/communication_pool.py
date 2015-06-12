@@ -59,6 +59,14 @@ class CommunicationPool:
         """
         return list(self._connections)
 
+    def send_to(self, target, msg):
+        """
+        sends a message msg to a target
+        :param target: MAC address of the target
+        :param msg: message to send
+        """
+        self._connections[target].send_message(msg)
+
     def update_devices(self, mac_list):
         """
         updates device connections. Start new connections or stop
