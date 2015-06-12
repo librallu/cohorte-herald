@@ -37,7 +37,7 @@ PORT = 1
 
 class Connection:
 
-    def __init__(self, mac, timeout=None):
+    def __init__(self, mac, timeout=None, err_callback=None):
         """
         constructor of a connection.
         Start a new process to initialize the connection
@@ -46,9 +46,12 @@ class Connection:
         :param mac: mac address of the peer bluetooth device
         :param timeout: if set to None, it can wait forever,
                 elsewhere, waits the timeout before quitting.
+        :param err_callback: function to be called if
+                there is an error when initialization connection.
         :return:
         """
         self._timeout = timeout
+        self._err_callback = err_callback
         self._mac = mac
         self._valid = False
         self._socket = None
@@ -76,6 +79,7 @@ class Connection:
             print(msg)
         if msg is None:
             print("connection aborted with pair {}".format(self._mac))
+            self._err_callback()
         else:
             print("connection ok with pair {}".format(self._mac))
             self._valid = True
