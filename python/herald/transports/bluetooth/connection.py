@@ -37,12 +37,23 @@ PORT = 1
 
 class Connection:
 
-    def __init__(self, mac):
+    def __init__(self, mac, timeout=None):
+        """
+        constructor of a connection.
+        Start a new process to initialize the connection
+        with the distant pair. This process puts the is_valid()
+        method to True when it's done.
+        :param mac: mac address of the peer bluetooth device
+        :param timeout: if set to None, it can wait forever,
+                elsewhere, waits the timeout before quitting.
+        :return:
+        """
+        self._timeout = timeout
         self._mac = mac
         self._valid = False
         self._socket = None
         self._automata = SerialAutomata(DELIMITER)
-        self._thread = threading.Thread(target=self._init_connection, args=())
+        self._thread = threading.Thread(target=self._init_connection)
 
     def _init_connection(self):
         """
@@ -53,17 +64,21 @@ class Connection:
         # connection with the peer
         self._socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
         self._socket.connect((self._mac, PORT))
+        self._socket.settimeout = self._timeout
 
         # step 1 - send a HELLO_MESSAGE
         self.send_message(HELLO_MESSAGE)
 
         # step 2 - wait a HELLO_MESSAGE
         msg = self.receive_message()
-        while msg != HELLO_MESSAGE:
+        while msg is not None and msg != HELLO_MESSAGE:
             msg = self.receive_message()
             print(msg)
-        print("connection ok with pair {}".format(self._mac))
-        self._valid = True
+        if msg is None:
+            print("connection aborted with pair {}".format(self._mac))
+        else:
+            print("connection ok with pair {}".format(self._mac))
+            self._valid = True
 
     def send_message(self, msg):
         """
@@ -75,10 +90,22 @@ class Connection:
     def receive_message(self):
         """
         :return: message read from the peer
+            None if timeout passed
         """
         while not self._automata.any_message():
-            self._automata.read(self._socket.recv(1024))
+            recv = self._socket.recv(1024)
+            if recv == '':  # if timeout passed
+                print('connection({}): timeout passed'.format(self._mac))
+                return None
+            print("CONNECTION: RECV={}".format(recv))
+            self._automata.read(recv)
         return self._automata.get_message()
+
+    def close(self):
+        """
+        Close the connection with the pair
+        """
+        self._socket.close()
 
     def is_valid(self):
         """
