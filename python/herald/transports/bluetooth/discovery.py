@@ -100,15 +100,25 @@ class Discovery:
         update attributes with the different bluetooth pairs known in the
         neighbourhood
         """
-        _logger.info("start searching devices...")
-        devices = bluetooth.discover_devices(
-            duration=self._discovery_duration,
-            lookup_names=True)
-        with self._lock:
+        try:
+            _logger.info("start searching devices...")
+            devices = bluetooth.discover_devices(
+                duration=self._discovery_duration,
+                lookup_names=True)
+            with self._lock:
+                self._devices_names = dict()
+                for i in devices:
+                    if i[1] in self._filter:
+                        self._devices_names[i[0]] = i[1]
+        except bluetooth.btcommon.BluetoothError:
             self._devices_names = dict()
-            for i in devices:
-                if i[1] in self._filter:
-                    self._devices_names[i[0]] = i[1]
         _logger.info("devices: {}".format(self._devices_names))
 
-
+    def clean_devices(self):
+        """
+        clean known devices.
+        !!! This method should be used only if there is a
+        detected exception BluetoothError.
+        """
+        with self._lock:
+            self._devices_names = dict()
