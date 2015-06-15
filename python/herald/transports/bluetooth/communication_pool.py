@@ -28,6 +28,8 @@ Communication pool for bluetooth links
 
 from herald.transports.bluetooth.connection import Connection
 
+import threading
+
 
 class CommunicationPool:
     """
@@ -44,6 +46,8 @@ class CommunicationPool:
 
     def __init__(self):
         self._connections = {}
+        self._callbacks = []
+        self._lock = threading.Lock()   # for mutex
 
     def has_connection(self, mac):
         """
@@ -67,6 +71,21 @@ class CommunicationPool:
         """
         self._connections[target].send_message(msg)
 
+    def register_callback(self, f):
+        with self._lock:
+            self._callbacks.append(f)
+
+    def _handle_messages(self, msg, mac):
+        """
+        Calls all registered functions when
+        a message appears.
+        :param msg: message
+        :param mac: sender's mac address
+        """
+        with self._lock:
+            for i in self._callbacks:
+                i(msg, mac)
+
     def update_devices(self, mac_list):
         """
         updates device connections. Start new connections or stop
@@ -87,8 +106,23 @@ class CommunicationPool:
             if i not in tmp:
                 print("pool: creating connection with: {}".format(i))
                 tmp[i] = Connection(i,
+                                    msg_callback=self._handle_messages,
                                     timeout=10,
-                                    err_callback=lambda: self._connections.pop(i)
-                                    )
-
+                                    err_callback=lambda: self._connections.pop(i))
         self._connections = tmp
+
+    def close(self):
+        """
+        Close all known connections.
+        """
+        for i in self._connections:
+            self._connections[i].close()
+
+    def close_ended(self):
+        """
+        :return: True if close ended correctly, False elsewhere
+        """
+        for i in self._connections:
+            if self._connections[i].is_valid():
+                return False
+        return True
