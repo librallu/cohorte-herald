@@ -65,7 +65,6 @@ class Connection:
                 there is an error when initialization connection.
         :return:
         """
-        print("starting init")
         self._timeout = timeout
         self._err_callback = err_callback
         self._mac = mac
@@ -77,7 +76,6 @@ class Connection:
         self._loop_thread = None
         self._init_thread = threading.Thread(target=self._init_connection)
         self._init_thread.start()
-        print("ending init")
 
     def _init_connection(self):
         """

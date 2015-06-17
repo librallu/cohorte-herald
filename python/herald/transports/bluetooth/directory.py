@@ -94,7 +94,7 @@ class BluetoothDirectory(object):
         :param data: Result of a call to BluetoothAccess.dump()
         :return: A BluetoothAccess bean
         """
-        return BluetoothAccess(data[0], data[1])
+        return BluetoothAccess(data[0])
 
     def peer_access_set(self, peer, data):
         """

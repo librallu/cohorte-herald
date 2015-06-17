@@ -44,16 +44,14 @@ class BluetoothAccess:
     Description of a Bluetooth access
     """
 
-    def __init__(self, mac, name):
+    def __init__(self, mac):
         """
         Sets up access information.
 
         :param mac: MAC adress of the device
-        :param name: visible name of the device
         :return: nothing
         """
         self.__mac = mac
-        self.__name = name
 
     def __hash__(self):
         """
@@ -83,7 +81,7 @@ class BluetoothAccess:
         """
         :return: string representation
         """
-        return "Bluetooth({0}:{1})".format(self.mac, self.name)
+        return "Bluetooth({0})".format(self.mac)
 
     @property
     def access_id(self):
@@ -100,18 +98,11 @@ class BluetoothAccess:
         return self.__mac
 
     @property
-    def name(self):
-        """
-        :return: name of access
-        """
-        return self.__name
-
-    @property
     def access(self):
         """
-        :return: tuple (mac, name)
+        :return: mac address
         """
-        return self.mac, self.name
+        return self.mac
 
     def dump(self):
         """
