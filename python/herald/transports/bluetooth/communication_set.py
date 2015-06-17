@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -- Content-Encoding: UTF-8 --
 """
-Communication pool for bluetooth links
+Communication set for bluetooth links
 
 :author: Luc Libralesso
 :copyright: Copyright 2014, isandlaTech
@@ -31,7 +31,7 @@ from herald.transports.bluetooth.connection import Connection
 import threading
 
 
-class CommunicationPool:
+class CommunicationSet:
     """
     When a list of devices is send, the
     create_connection method creates a new
@@ -59,7 +59,7 @@ class CommunicationPool:
 
     def list_connections(self):
         """
-        :return: list of peers known in the pool
+        :return: list of peers known in the set
         """
         return list(self._connections)
 
@@ -98,13 +98,13 @@ class CommunicationPool:
             if i in mac_list:
                 tmp[i] = self._connections[i]
             else:
-                print("pool: deleting connection with: {}".format(i))
+                print("set: deleting connection with: {}".format(i))
                 self._connections[i].close()
 
         # if a device needs to be added
         for i in mac_list:
             if i not in tmp:
-                print("pool: creating connection with: {}".format(i))
+                print("set: creating connection with: {}".format(i))
                 tmp[i] = Connection(i,
                                     msg_callback=self._handle_messages,
                                     timeout=10,
