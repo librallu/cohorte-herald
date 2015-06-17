@@ -228,7 +228,7 @@ class Herald(object):
         self.__gc_lock = threading.Lock()
 
         # routing: default gateway
-        self.gateway = None
+        self._gateway = None
 
     @Validate
     def _validate(self, context):
@@ -425,7 +425,7 @@ class Herald(object):
 
         :param message: A MessageReceived bean forged by the transport
         """
-        # FIXME add routing test (i.e. check if it's the final receiver)
+        # print("incoming message : {}".format(message))
         with self.__gc_lock:
             if message.uid in self.__treated:
                 # Message already handled, maybe it has been received by
@@ -442,13 +442,18 @@ class Herald(object):
                 # Internal message
                 if parts[1] == 'error':
                     # Error message: handle it, but don't propagate it
+                    # FIXME to remove later
+                    self._splat_content(message)
                     self._handle_error(message, parts[2])
                     return
-                elif parts[1] == 'routing' and not self._is_router():
-                    # if as a non router, I get a router
-                    self.gateway = message.sender
+                elif parts[1] == 'routing':
+                        if not self._is_router():
+                            # if as a non router, I get a router
+                            self._gateway = message.sender
                 elif parts[1] == 'directory':
                     # Directory update message
+                    # FIXME to remove later
+                    self._splat_content(message)
                     self._handle_directory_message(message, parts[2])
         except IndexError:
             # Not enough arguments for a directory update: ignore
@@ -457,12 +462,35 @@ class Herald(object):
         # if the message needs to be routed
         if self._is_destination(message):
             # Notify others of the message
+            # FIXME to remove later
+            self._splat_content(message)
             self.__notify(message)
         elif self._is_router():
-            self._route_message(message)
+            target = self._extract_target(message)
+            # FIXME to remove later
+            self._splat_content(message)
+            self.fire(target, message)
         else:
             # if the message needs to be routed but pair can't do it.
             _logger.critical("=== ROUTING: NON DESTINATION AND NON ROUTER")
+
+    @staticmethod
+    def _splat_content(message):
+        if isinstance(message.content, dict):
+            if 'routing_content' in message.content:
+                message._content = message.content['routing_content']
+
+    def _extract_target(self, message):
+        """
+        message content format : [adr]@[content]
+        modifies content to [content] and return adr
+        :param message: message to extract destination
+        :return: target
+        """
+        if isinstance(message.content, dict):
+            if 'target' in message.content:
+                return message.content['target']
+        return self._directory.local_uid
 
     def _is_router(self):
         """
@@ -472,26 +500,62 @@ class Herald(object):
 
     def _is_destination(self, message):
         """
-        :param message: message to ckeck
+        :param message: message to check
         :return: True if current pair is the final destination of
         the message, False elsewhere
         """
-        # _logger.critical("TODO: _is_destination")
-        return True
+        target = self._extract_target(message)
+        return self._directory.local_uid == target
 
-    def _route_message(self, message):
+    def _in_neighbours(self, peer):
         """
-        route the message according to the routing module
-        and the message's destination.
-        :param message: message to be routed
-        :return: True if message has been routed successfully
-                 False elsewhere
+        :param peer: peer to check
+        :return: return true if the peer is in neighbours, false
+            elsewhere
         """
-        _logger.critical("TODO: _route_message")
-        if self.is_router():  # send to the next hop
-            pass
-        else:  # send to the default gateway
-            pass
+        return peer in self._directory.get_peers()
+
+    def fire(self, target, message):
+        """
+        Fires message to a peer
+        :param target: target uid
+        :param message: message to fire.
+        """
+
+        # Standard behavior
+        # Get the Peer object
+        if not isinstance(target, beans.Peer):
+            target = self._directory.get_peer(target)
+
+        # if destination reachable, use old fire directly
+        if self._in_neighbours(target):
+            # print("core:fire -> {} found in neighbours !".format(target))
+            # print("default fire invoked")
+
+            # print("adding for the moment {} to message".format(target))
+            content = {'target': target.uid, 'routing_content': message.content}
+            # print("core:fire -> new content : {}".format(content))
+            message._content = content
+            return self._fire(target, message)
+        else:
+            # print("core:fire -> {} not found in neighbours".format(target))
+            # print("adding {} to message".format(target))
+
+            # print("adding for the moment {} to message".format(target))
+            content = {'target': target, 'routing_content': message.content}
+            # print("core:fire -> new content : {}".format(content))
+            message._content = content
+
+            if self._is_router():
+                next_hop = self._routing.get_next_hop_to(target)
+                # print("core:fire -> redirecting message to {}".format(next_hop))
+                return self._fire(next_hop, message)
+            else:
+                # fire to the default gateway
+                if self._gateway is None:
+                    raise Exception('GATEWAY NOT EXISTING')
+                # print("core:fire -> sending to default gateway {}".format(self._gateway))
+                return self._fire(self._gateway, message)
 
     def _handle_error(self, message, kind):
         """
@@ -629,7 +693,8 @@ class Herald(object):
                 # FIXME idem
             try:
                 # Send the reply
-                transport.fire(peer, message, reply_to.extra)
+                self.fire(peer, message)
+
             except InvalidPeerAccess:
                 # FIXME idem
                 raise NoTransport(beans.Target(uid=reply_to.sender),
@@ -639,7 +704,7 @@ class Herald(object):
                 # Reply sent. Stop here
                 return message.uid
 
-    def fire(self, target, message):
+    def _fire(self, target, message):
         """
         Fires (and forget) the given message to the target
 
@@ -668,27 +733,23 @@ class Herald(object):
                 transport = self._transports[access]
             except KeyError:
                 # No transport for this kind of access
-                # FIXME maybe we need to check if the message can be routed
                 pass
             else:
                 try:
                     # Call it
                     transport.fire(peer, message)
                 except InvalidPeerAccess as ex:
-                    # FIXME maybe we need to check if the message can be routed
                     # Transport can't read peer access data
                     _logger.debug("Error reading access for transport %s: %s",
                                   access, ex)
                 except Exception as ex:
-                    # FIXME maybe we need to check if the message can be routed
                     # Exception during transport
-                    _logger.info("Error using transport %s: %s", access, ex)
+                    _logger.exception("Error using transport %s: %s", access, ex)
                 else:
                     # Success
                     break
         else:
             # No transport for those accesses
-            # FIXME maybe we need to check if the message can be routed
             raise NoTransport(beans.Target(uid=peer.uid),
                               "No working transport found for peer {0}"
                               .format(peer))
