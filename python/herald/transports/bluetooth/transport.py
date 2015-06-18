@@ -94,3 +94,23 @@ class HttpTransport(object):
 
         # Local UID
         self.__peer_uid = None
+
+    def fire(self, peer, message, extra=None):
+        """
+        Fires a herald message
+        :param peer:
+        :param message:
+        :param extra:
+        :return:
+        """
+        pass
+
+    def fire_group(self, group, peers, message):
+        """
+        Fire a grouped herald message
+        :param group:
+        :param peers:
+        :param message:
+        :return:
+        """
+        pass
