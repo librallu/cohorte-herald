@@ -528,7 +528,8 @@ class Herald(object):
         :return: return true if the peer is in neighbours, false
             elsewhere
         """
-        return peer in self._directory.get_peers()
+        neighbours = {i.uid for i in self._directory.get_peers()}
+        return peer in neighbours
 
     def fire(self, target, message):
         """
@@ -537,29 +538,28 @@ class Herald(object):
         :param message: message to fire.
         """
 
-        # Standard behavior
-        # Get the Peer object
-        if not isinstance(target, beans.Peer):
-            target = self._directory.get_peer(target)
+        # if target is a Bean, transform it to a UID
+        if isinstance(target, beans.Peer):
+            target = target.uid
 
         # if destination reachable, use old fire directly
         if self._in_neighbours(target):
             # print("core:fire -> {} found in neighbours !".format(target))
             # print("default fire invoked")
-
+            #
             # print("adding for the moment {} to message".format(target))
-            content = {'target': target.uid, 'routing_content': message.content}
+            content = {'target': target, 'routing_content': message.content}
             # print("core:fire -> new content : {}".format(content))
-            message._content = content
+            message.set_content(content)
             return self._fire(target, message)
         else:
             # print("core:fire -> {} not found in neighbours".format(target))
             # print("adding {} to message".format(target))
-
+            #
             # print("adding for the moment {} to message".format(target))
             content = {'target': target, 'routing_content': message.content}
             # print("core:fire -> new content : {}".format(content))
-            message._content = content
+            message.set_content(content)
 
             if self._is_router():
                 next_hop = self._routing.get_next_hop_to(target)
