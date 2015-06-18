@@ -52,6 +52,90 @@ _logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------------------
 
 
+class NeighbourInformation:
+    """
+    Class that contains informations about a known peer uid:
+    - it's metric (float)
+    - it's last ask (datetime)
+    - if it is a router (boolean)
+    """
+
+    def __init__(self):
+        """
+        Init attributes
+        """
+        self._data = {}
+        self._lock = threading.Lock()   # for mutex
+
+    def add_uid(self, uid, metric=None, last_ask=None, router=None):
+        """
+        adds or replace uid data in the neighbourInformation
+        """
+        self._data[uid] = {
+            'metric': metric,
+            'last_ask': last_ask,
+            'router': router
+        }
+
+    def change_field(self, uid, name, value):
+        """
+        :param uid: peer uid
+        :param name: name of the field
+        :param value: new value for name
+        """
+        with self._lock:
+            if uid not in self._data:
+                self.add_uid(uid)
+            self._data[uid][name] = value
+
+    def get_field(self, uid, name):
+        """
+        Gets the value of the field *name* for *uid*
+        :param uid: peer uid
+        :param name: name of the field
+        :return: value of the field
+        """
+        return self._data[uid][name]
+
+    def del_uid(self, uid):
+        """
+        Delete uid from neighbourInformation.
+        Does nothing if uid not existing.
+        """
+        with self._lock:
+            if self.exists(uid):
+                del self._data[uid]
+
+    def exists(self, uid):
+        """
+        :return: True if uid exists in information, False elsewhere
+        """
+        return uid in self._data
+
+    def clear(self):
+        """
+        Removes all elements in data
+        """
+        with self._lock:
+            self._data.clear()
+
+    def neighbours_set(self, field=None):
+        """
+        return a set of neighbours.
+        It is possible to specify a field name
+        to extract only elements that are not None
+        :param field: field to get non null info
+        :return: set of neighbours uid
+        """
+        if field is None:
+            return set(self._data)
+        data = set()
+        for i in self._data:
+            if self._data[i][field] is not None:
+                data.add(i)
+        return data
+
+
 @ComponentFactory("herald-routing-hellos-factory")
 @Provides(herald.SERVICE_LISTENER)  # for getting messages of type reply
 @Provides(herald.routing_constants.GET_NEIGHBOURS_AVAILABLE)  # for metrics
@@ -59,7 +143,7 @@ _logger = logging.getLogger(__name__)
 @Requires('_directory', herald.SERVICE_DIRECTORY)  # for getting neighbours
 @Property('_filters', herald.PROP_FILTERS, ['herald/routing/reply/*'])
 @Property('_hello_delay', 'hello_delay', 3)
-@Property('_hello_timeout', 'hello_timeout', 10)
+@Property('_hello_timeout', 'hello_timeout', 2)
 @Property('_granularity', 'metric_granularity', .00003)
 @Instantiate('herald-routing-hellos')
 class Hellos:
@@ -97,12 +181,10 @@ class Hellos:
         self._directory = None
 
         # private objects
-        self._neighbours = None     # metric information
+        self._neighbours = None     # uid -> NeighbourInfo
         self._lock = None           # for mutex
         self._loop_thread = None    # looping thread
         self._active = None         # True if looping thread active
-        self._last_ask = None       # peer uid -> datetime
-        self._routers = None        # peer set that are routers
 
         # Properties
         self._hello_timeout = None
@@ -116,9 +198,7 @@ class Hellos:
         :param context:
         :return: nothing
         """
-        self._neighbours = {}
-        self._routers = set()
-        self._last_ask = {}
+        self._neighbours = NeighbourInformation()
         self._lock = threading.Lock()
         self._active = True
         self._loop_thread = threading.Thread(target=self._loop, args=())
@@ -149,13 +229,12 @@ class Hellos:
         router = None
         if len(info) >= 4:
             router = info[3]
-        if router == 'R':
-            self._routers.add(peer_uid)
-            # _logger.info("new router: {}".format(peer_uid))
+        if router == 'R':  # if it is a router
+            self._neighbours.change_field(peer_uid, 'router', True)
+            # _logger.info("router detected : {}".format(peer_uid))
         else:
-            if peer_uid in self._routers:
-                self._routers.remove(peer_uid)
-            # _logger.info("No new router: {}".format(peer_uid))
+            self._neighbours.change_field(peer_uid, 'router', False)
+            # _logger.info("a non router detected : {}".format(peer_uid))
 
     def herald_message(self, herald_svc, message):
         """
@@ -163,13 +242,16 @@ class Hellos:
         It measures delay between sending and answer receiving.
         """
         sender_uid = message.sender
-        if sender_uid in self._last_ask:
-            delay = self._time_between(self._last_ask[sender_uid])
+        # if sender_uid have a last_ask existing
+        if sender_uid in self._neighbours.neighbours_set(field='last_ask'):
+            old_time = self._neighbours.get_field(sender_uid, 'last_ask')
+            delay = self._time_between(old_time)
+            # we compute the new metric for sender_uid
             self.change_metric(sender_uid, delay)
-            self._lock.acquire()
-            del self._last_ask[sender_uid]
+            # we delete the field last_ask because we have now our answer
+            self._neighbours.change_field(sender_uid, 'last_ask', None)
+            # we set the field router if it's a router
             self._extract_info_from_reply(sender_uid, message.subject)
-            self._lock.release()
 
     def get_neighbour_metric(self, neighbour):
         """
@@ -178,34 +260,46 @@ class Hellos:
         :return: known metric (latency) from neighbour
             None if there is no connection
         """
-        if neighbour not in self._neighbours:
-            return None
-        if self._neighbours[neighbour] >= self._hello_timeout:
-            return None
-        return self._neighbours[neighbour]
+        # if we know a metric for the neighbour
+        if neighbour in self._neighbours.neighbours_set(field='metric'):
+            metric = self._neighbours.get_field(neighbour, 'metric')
+            # if it is superior to the timeout
+            # return None (no link)
+            if metric >= self._hello_timeout:
+                return None
+            return metric
+        return None
 
     def get_neighbours(self):
         """
         returns all the information known about neighbours
-        :return: a dict object with neighbour UID as key and metric as value
+        :return: a set object with neighbour UID
 
         potential bug: return value is a reference with an internal object.
         """
-        return [i for i in self._neighbours if self.is_reachable(i)]
+        return self._neighbours.neighbours_set(field='metric')
 
     def is_reachable(self, neighbour):
         """
         :param neighbour: neighbour to check
         :return: return true if neighbour is reachable, false elsewhere
         """
-        return neighbour in self._neighbours and \
-            self._neighbours[neighbour] < self._hello_timeout
+        if neighbour in self._neighbours.neighbours_set(field='metric'):
+            metric = self._neighbours.get_field(neighbour, 'metric')
+            return metric is not None and metric < self._hello_timeout
+        else:
+            return False
 
     def get_neighbours_routers(self):
         """
         :return: known neighbours that are routers
         """
-        return self._routers
+        res = set()
+        for i in self._neighbours.neighbours_set(field='router'):
+            if self._neighbours.get_field(i, 'router'):
+                if self._neighbours.get_field(i, 'metric') is not None:
+                    res.add(i)
+        return res
 
     def _send_hello(self, target, msg):
         """
@@ -214,7 +308,7 @@ class Hellos:
         :param msg: message to send
         :return: nothing
         """
-        self._last_ask[target.uid] = datetime.datetime.now()
+        self._neighbours.change_field(target, 'last_ask', datetime.datetime.now())
         try:
             self._herald.fire(target, msg)
         except herald.exceptions.NoTransport:  # no more link
@@ -229,12 +323,13 @@ class Hellos:
         :param new_value: new metric value
         :return: nothing
         """
-        if peer_uid in self._neighbours:
-            diff = abs(new_value-self._neighbours[peer_uid])
+        if peer_uid in self._neighbours.neighbours_set(field='metric'):
+            old_value = self._neighbours.get_field(peer_uid, 'metric')
+            diff = abs(new_value-old_value)
             if diff >= self._granularity or new_value >= self._hello_timeout:
-                self._neighbours[peer_uid] = new_value
+                self._neighbours.change_field(peer_uid, 'metric', new_value)
         else:
-            self._neighbours[peer_uid] = new_value
+            self._neighbours.change_field(peer_uid, 'metric', new_value)
 
     def set_not_reachable(self, peer_uid):
         """
@@ -242,7 +337,7 @@ class Hellos:
         :param peer_uid: peer to set
         :return: nothing
         """
-        self.change_metric(peer_uid, self._hello_timeout)
+        self._neighbours.del_uid(peer_uid)
 
     @staticmethod
     def _time_between(old_time):
@@ -263,15 +358,21 @@ class Hellos:
         while self._active:
             # send a message for each entry in the directory
             for target in self._directory.get_peers():
-                if target.uid not in self._last_ask:
+                if target.uid not in waiting_for:
                     # we don't send messages if we are waiting for one
-                    self._send_hello(target, Message('herald/routing/hello/'))
+                    self._send_hello(target.uid, Message('herald/routing/hello/'))
                     # _logger.info("hello sent to {}".format(target))
-                elif self._time_between(self._last_ask[target.uid]) \
-                        > self._hello_timeout:
+            # deleting known peers if timeout exceeded
+            waiting_for = self._neighbours.neighbours_set(field='last_ask')
+            for target in waiting_for:
+                ask_time = self._neighbours.get_field(target, 'last_ask')
+                if self._time_between(ask_time) > self._hello_timeout:
                     # in this case, we have the timeout elapsed
-                    self.set_not_reachable(target.uid)
-                    self._send_hello(target, Message('herald/routing/hello/'))
+                    self.set_not_reachable(target)
                     # _logger.info("hello sent to {}".format(target))
+            # deleting peers which are not in our directory
+            for peer in self.get_neighbours():
+                if peer not in {i.uid for i in self._directory.get_peers()}:
+                    self.set_not_reachable(peer)
             # wait a moment
             time.sleep(self._hello_delay)

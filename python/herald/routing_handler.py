@@ -80,6 +80,5 @@ class MessageHandler:
         """
         An Herald hello message has been received
         """
-        print(herald_svc)
         subject = 'herald/routing/reply/{}/'.format(self.is_router())
         herald_svc.reply(message, None, subject=subject)

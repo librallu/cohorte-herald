@@ -232,7 +232,7 @@ class Roads:
                 del self._next_hop[destination]
             if destination in self._metric:
                 del self._metric[destination]
-            _logger.info("Deleting road to %s", destination)
+            # _logger.info("Deleting road to %s", destination)
         else:
             self._next_hop[destination] = next_hop
             self._metric[destination] = metric
@@ -244,9 +244,9 @@ class Roads:
         It measures delay between sending and answer receiving.
         """
         self._lock.acquire()
-        _logger.info("-"*10 + " RECEIVE")
+        # _logger.info("-"*10 + " RECEIVE")
         info = eval(message.content)
-        _logger.info(info)
+        # _logger.info(info)
         sender_uid = message.sender
         # forget all roads from sender_uid
         next_hop = {}  # a new self._next_hop
