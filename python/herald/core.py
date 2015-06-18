@@ -440,7 +440,8 @@ class Herald(object):
 
         :param message: A MessageReceived bean forged by the transport
         """
-        # print("incoming message : {}".format(message))
+        print("incoming message : {}".format(message))
+        print("target : {}".format(message.get_header('final_destination')))
         with self.__gc_lock:
             if message.uid in self.__treated:
                 # Message already handled, maybe it has been received by
@@ -457,8 +458,6 @@ class Herald(object):
                 # Internal message
                 if parts[1] == 'error':
                     # Error message: handle it, but don't propagate it
-                    # FIXME to remove later
-                    self._splat_content(message)
                     self._handle_error(message, parts[2])
                     return
                 elif parts[1] == 'routing':
@@ -467,8 +466,6 @@ class Herald(object):
                             self._gateway = message.sender
                 elif parts[1] == 'directory':
                     # Directory update message
-                    # FIXME to remove later
-                    self._splat_content(message)
                     self._handle_directory_message(message, parts[2])
         except IndexError:
             # Not enough arguments for a directory update: ignore
@@ -477,35 +474,13 @@ class Herald(object):
         # if the message needs to be routed
         if self._is_destination(message):
             # Notify others of the message
-            # FIXME to remove later
-            self._splat_content(message)
             self.__notify(message)
         elif self._is_router():
             target = self._extract_target(message)
-            # FIXME to remove later
-            self._splat_content(message)
             self.fire(target, message)
         else:
             # if the message needs to be routed but pair can't do it.
             _logger.critical("=== ROUTING: NON DESTINATION AND NON ROUTER")
-
-    @staticmethod
-    def _splat_content(message):
-        if isinstance(message.content, dict):
-            if 'routing_content' in message.content:
-                message._content = message.content['routing_content']
-
-    def _extract_target(self, message):
-        """
-        message content format : [adr]@[content]
-        modifies content to [content] and return adr
-        :param message: message to extract destination
-        :return: target
-        """
-        if isinstance(message.content, dict):
-            if 'target' in message.content:
-                return message.content['target']
-        return self._directory.local_uid
 
     def _is_router(self):
         """
@@ -519,8 +494,20 @@ class Herald(object):
         :return: True if current pair is the final destination of
         the message, False elsewhere
         """
-        target = self._extract_target(message)
-        return self._directory.local_uid == target
+        target = message.get_header('final_destination')
+        # note that self._directory.local_uid == target is not necessary here
+        # we keep it because it can be useful if we send messages from
+        # a non application isolate.
+        return target is None or self._directory.local_uid == target
+
+    @staticmethod
+    def _add_destination(message, destination):
+        """
+        adds a final destination in a message header
+        :param message: message Bean
+        :param destination: UID
+        """
+        message.add_header('final_destination', destination)
 
     def _in_neighbours(self, peer):
         """
@@ -546,20 +533,14 @@ class Herald(object):
         if self._in_neighbours(target):
             # print("core:fire -> {} found in neighbours !".format(target))
             # print("default fire invoked")
-            #
-            # print("adding for the moment {} to message".format(target))
-            content = {'target': target, 'routing_content': message.content}
-            # print("core:fire -> new content : {}".format(content))
-            message.set_content(content)
             return self._fire(target, message)
         else:
             # print("core:fire -> {} not found in neighbours".format(target))
             # print("adding {} to message".format(target))
             #
             # print("adding for the moment {} to message".format(target))
-            content = {'target': target, 'routing_content': message.content}
-            # print("core:fire -> new content : {}".format(content))
-            message.set_content(content)
+            self._add_destination(message, target)
+            print("distant target : {}".format(message.get_header('final_destination')))
 
             if self._is_router():
                 next_hop = self._routing.get_next_hop_to(target)
