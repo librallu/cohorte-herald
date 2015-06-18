@@ -484,6 +484,13 @@ class Message(object):
             return self._headers[key]       
         return None
 
+    def remove_header(self, key):
+        """
+        Removes a header from the headers list
+        """
+        if key in self._headers:
+            del self._headers[key]
+
     def set_content(self, content):
         """
         Set content
@@ -503,7 +510,15 @@ class Message(object):
         if key in self._metadata:
             return self._metadata[key]
         return None
-
+        
+    def remove_metadata(self, key):
+        """
+        Removes a metadata 
+        """
+        if key in self._metadata:
+            del self._metadata[key]
+            
+            
 class MessageReceived(Message):
     """
     Represents a message received by a transport
@@ -564,3 +579,15 @@ class MessageReceived(Message):
         Extra information set by the transport that received this message
         """
         return self._extra
+
+    def set_access(self, access):
+        """
+        Sets the access
+        """
+        self._access = access
+        
+    def set_extra(self, extra):
+        """
+        Sets the extra
+        """
+        self._extra = extra
