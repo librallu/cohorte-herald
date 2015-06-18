@@ -30,6 +30,63 @@ Herald core package
 __docformat__ = "restructuredtext en"
 
 # ------------------------------------------------------------------------------
+# Message Format
+
+HERALD_SPECIFICATION_VERSION = 1
+"""
+Specification number of Herald. This is an integer incrementing number.
+"""
+
+MESSAGE_HERALD_VERSION = "herald-version"
+"""
+"""
+
+MESSAGE_HEADERS = "headers"
+"""
+"""
+
+MESSAGE_SUBJECT = "subject"
+"""
+"""
+
+MESSAGE_CONTENT = "content"
+"""
+"""
+
+MESSAGE_METADATA = "metadata"
+"""
+"""
+
+MESSAGE_HEADER_UID = "uid"
+"""
+Message header containing the message Unique IDentifier.
+It is set by the Message constructor. Can not be modified with "set_header" method
+"""
+
+MESSAGE_HEADER_TIMESTAMP = "timestamp"
+"""
+Message header containing the creation date of the message.
+It is set by the Message constructor. Can not be modified with "set_header" method
+"""
+
+MESSAGE_HEADER_SENDER_UID = "sender-uid"
+"""
+Message header containing the UID of the peer sender of the message.
+"""
+
+MESSAGE_HEADER_REPLIES_TO = "replies-to"
+"""
+Message header containing the UID of the original message that triggered the creation
+of the response message containing this header (case of send mode).  
+"""
+
+MESSAGE_HEADER_ACCESS = "access"
+"""  
+Message header containing the access on which this message was received 
+(only for MessageReceived)
+"""
+
+# ------------------------------------------------------------------------------
 # Service specifications
 
 SERVICE_HERALD = "herald.core"

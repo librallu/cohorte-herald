@@ -42,6 +42,7 @@ from . import beans
 import herald.beans
 import herald.transports.peer_contact as peer_contact
 import herald.utils as utils
+import herald.transports.http
 
 # Pelix
 from pelix.ipopo.decorators import ComponentFactory, Requires, Provides, \
@@ -244,44 +245,80 @@ class HeraldServlet(object):
         content = ""
 
         # Extract headers
+        """
         content_type = request.get_header('content-type')
         subject = request.get_header('herald-subject')
         uid = request.get_header('herald-uid')
         reply_to = request.get_header('herald-reply-to')
         timestamp = request.get_header('herald-timestamp')
         sender_uid = request.get_header('herald-sender-uid')
+        """
+        content_type = request.get_header('content-type')
+        subject = None
+        uid = None
+        reply_to = None
+        timestamp = None
+        sender_uid = None
+        
         raw_content = to_unicode(request.read_data())
-
+        
         # Client information
         host = utils.normalize_ip(request.get_client_address()[0])
 
-        if not uid or not subject or content_type != CONTENT_TYPE_JSON:
+        if content_type != CONTENT_TYPE_JSON:
             # Raw message
             uid = str(uuid.uuid4())
             subject = herald.SUBJECT_RAW
+            #msg_content = raw_content
             msg_content = raw_content
             port = -1
-            extra = {'host': host, 'raw': True}
+            extra = {'host': host, 'raw': True}                       
         else:
             # Herald message
-            msg_content = jabsorb.from_jabsorb(json.loads(raw_content))
-
-            # Store sender information
-            port = int(request.get_header('herald-port', 80))
-            extra = {'host': host, 'port': port,
-                     'path': request.get_header('herald-path'),
-                     'parent_uid': uid}
-
             try:
-                # Check the sender UID port
-                # (not perfect, but can avoid spoofing)
-                if not self._http_directory.check_access(
-                        sender_uid, host, port):
-                    # Port doesn't match: invalid UID
-                    sender_uid = "<invalid>"
-            except ValueError:
-                # Unknown peer UID: keep it as is
-                pass
+                received_msg = utils.from_json(raw_content)                
+            except Exception as ex:
+                _logger.exception("DoPOST ERROR:: %s", ex)
+                
+            msg_content = received_msg.content
+            
+            subject = received_msg.subject
+            uid = received_msg.uid
+            reply_to = received_msg.reply_to
+            timestamp = received_msg.timestamp
+            sender_uid = received_msg.sender
+            
+            if not uid or not subject:
+                # Raw message
+                uid = str(uuid.uuid4())
+                subject = herald.SUBJECT_RAW
+                #msg_content = raw_content
+                msg_content = raw_content
+                port = -1
+                extra = {'host': host, 'raw': True}     
+            else:       
+                # Store sender information
+                try:                 
+                    port = int(received_msg.get_header(herald.transports.http.MESSAGE_HEADER_PORT))                    
+                except (KeyError, ValueError, TypeError):
+                    port = 80
+                path = None
+                if herald.transports.http.MESSAGE_HEADER_PATH in received_msg.headers:
+                    path = received_msg.get_header(herald.transports.http.MESSAGE_HEADER_PATH)                
+                extra = {'host': host, 'port': port,
+                         'path': path,
+                         'parent_uid': uid}
+    
+                try:
+                    # Check the sender UID port
+                    # (not perfect, but can avoid spoofing)
+                    if not self._http_directory.check_access(
+                            sender_uid, host, port):
+                        # Port doesn't match: invalid UID
+                        sender_uid = "<invalid>"
+                except ValueError:
+                    # Unknown peer UID: keep it as is
+                    pass
 
         # Prepare the bean
         message = herald.beans.MessageReceived(uid, subject, msg_content,

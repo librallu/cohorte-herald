@@ -47,6 +47,7 @@ from herald.exceptions import InvalidPeerAccess
 import herald
 import herald.beans as beans
 import herald.utils as utils
+import herald.transports.http
 
 # Pelix
 from pelix.ipopo.decorators import ComponentFactory, Requires, Provides, \
@@ -180,6 +181,7 @@ class HttpTransport(object):
         :return: A (headers, content) tuple
         """
         # Prepare headers
+        """
         headers = {'content-type': CONTENT_TYPE_JSON,
                    'herald-subject': message.subject,
                    'herald-uid': message.uid,
@@ -187,15 +189,21 @@ class HttpTransport(object):
                    'herald-timestamp': int(time.time() * 1000),
                    'herald-port': self.__access_port,
                    'herald-path': self.__access_path}
+        """
+        headers = {'content-type': CONTENT_TYPE_JSON} 
+        message.add_header(herald.MESSAGE_HEADER_SENDER_UID, self.__peer_uid)
+        message.add_header(herald.transports.http.MESSAGE_HEADER_PORT, self.__access_port)
+        message.add_header(herald.transports.http.MESSAGE_HEADER_PATH, self.__access_path)
         if parent_uid:
-            headers['herald-reply-to'] = parent_uid
+            #headers['herald-reply-to'] = parent_uid
+            message.add_header(herald.MESSAGE_HEADER_REPLIES_TO, parent_uid)
 
         if message.subject in herald.SUBJECTS_RAW:
-            content = to_str(message.content)
+            content = utils.to_str(message.content)
         else:
             # Convert content to JSON
-            jabsorb_content = jabsorb.to_jabsorb(message.content)
-            content = json.dumps(jabsorb_content, default=utils.json_converter)
+            content = utils.to_json(message)
+            
         return headers, content
 
     def __post_message(self, url, content, headers):

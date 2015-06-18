@@ -40,6 +40,11 @@ import functools
 import threading
 import time
 import uuid
+import json
+
+# import herald module to use constantes
+import herald
+import herald.utils as utils
 
 # ------------------------------------------------------------------------------
 
@@ -407,16 +412,21 @@ class Message(object):
         :param subject: Subject of the message
         :param content: Content of the message (optional)
         """
-        self._uid = str(uuid.uuid4()).replace('-', '').upper()
-        self._timestamp = int(time.time() * 1000)
         self._subject = subject
         self._content = content
+        
+        self._headers = {}
+        self._headers[herald.MESSAGE_HERALD_VERSION] = herald.HERALD_SPECIFICATION_VERSION
+        self._headers[herald.MESSAGE_HEADER_TIMESTAMP] = int(time.time() * 1000) 
+        self._headers[herald.MESSAGE_HEADER_UID] = str(uuid.uuid4()).replace('-', '').upper()
+        
+        self._metadata = {}  
 
     def __str__(self):
         """
         String representation
         """
-        return "{0} ({1})".format(self._subject, self._uid)
+        return "{0} ({1})".format(self._subject, self.uid)
 
     @property
     def subject(self):
@@ -437,15 +447,62 @@ class Message(object):
         """
         Time stamp of the message
         """
-        return self._timestamp
+        return self._headers[herald.MESSAGE_HEADER_TIMESTAMP]
 
     @property
     def uid(self):
         """
         Message UID
         """
-        return self._uid
+        return self._headers[herald.MESSAGE_HEADER_UID]
 
+    @property
+    def headers(self):
+        """
+        Message headers
+        """
+        return self._headers
+    
+    @property    
+    def metadata(self):
+        """
+        Message metadata
+        """
+        return self._metadata
+
+    def add_header(self, key, value):
+        """
+        Adds a header
+        """
+        self._headers[key] = value
+        
+    def get_header(self, key):
+        """
+        Gets a header value 
+        """
+        if key in self._headers:
+            return self._headers[key]       
+        return None
+
+    def set_content(self, content):
+        """
+        Set content
+        """
+        self._content = content
+        
+    def add_metadata(self, key, value):
+        """
+        Adds a metadata
+        """
+        self._metadata[key] = value
+        
+    def get_metadata(self, key):
+        """
+        Gets a metadata
+        """
+        if key in self._metadata:
+            return self._metadata[key]
+        return None
 
 class MessageReceived(Message):
     """
@@ -466,40 +523,40 @@ class MessageReceived(Message):
         :param extra: Extra configuration for the transport in case of reply
         """
         Message.__init__(self, subject, content)
-        self._uid = uid
-        self._sender = sender_uid
-        self._reply_to = reply_to
-        self._access = access
+        self._headers[herald.MESSAGE_HEADER_UID] = uid
+        self._headers[herald.MESSAGE_HEADER_SENDER_UID] = sender_uid
+        self._headers[herald.MESSAGE_HEADER_REPLIES_TO] = reply_to
+        self._headers[herald.MESSAGE_HEADER_ACCESS] = access
         self._extra = extra
-        self._timestamp = timestamp
+        self._headers[herald.MESSAGE_HEADER_TIMESTAMP] = timestamp
 
     def __str__(self):
         """
         String representation
         """
-        return "{0} ({1}) from {2}".format(self._subject, self._uid,
-                                           self._sender)
+        return "{0} ({1}) from {2}".format(self._subject, self.uid,
+                                           self.sender)
 
     @property
     def access(self):
         """
         Returns the access ID of the transport which received this message
         """
-        return self._access
+        return self._headers[herald.MESSAGE_HEADER_ACCESS]
 
     @property
     def reply_to(self):
         """
         UID of the message this one replies to
         """
-        return self._reply_to
+        return self._headers[herald.MESSAGE_HEADER_REPLIES_TO]
 
     @property
     def sender(self):
         """
         UID of the peer that sent this message
         """
-        return self._sender
+        return self._headers[herald.MESSAGE_HEADER_SENDER_UID]
 
     @property
     def extra(self):

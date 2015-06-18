@@ -147,7 +147,7 @@ class XmppTransport(object):
         self._bot_state = "destroyed"
 
         # Bot state's lock
-        self._bot_lock = threading.Lock()
+        self._bot_lock = threading.RLock()
 
         # Bot method recall timer
         self._bot_recall_timer = None
@@ -555,8 +555,7 @@ class XmppTransport(object):
         # create a new bot (which implies the deletion of the old one)
         _logger.warning("Bot disconnected: reconnect (state=%s)",
                         self._bot_state)
-        print("- - - - - - - on disconnected: " + self._bot_state)
-
+        
         with self._bot_lock:
             # Destroy the old bot, if any
             if self._bot_state == "created":
@@ -595,8 +594,9 @@ class XmppTransport(object):
         except KeyError:
             sender_uid = "<unknown>"
 
-        try:
-            content = jabsorb.from_jabsorb(json.loads(msg['body']))
+        try:            
+            received_msg = utils.from_json(msg['body'])
+            content = received_msg.content
         except ValueError:
             # Content can't be decoded, use its string representation as is
             content = msg['body']
@@ -698,9 +698,11 @@ class XmppTransport(object):
         if message.subject in herald.SUBJECTS_RAW:
             content = to_str(message.content)
         else:
-            content = json.dumps(jabsorb.to_jabsorb(message.content),
-                                 default=utils.json_converter)
-
+            # update headers
+            local_peer = self._directory.get_local_peer()
+            message.add_header(herald.MESSAGE_HEADER_SENDER_UID, local_peer.uid)
+            content = utils.to_json(message)
+        
         # Prepare an XMPP message, based on the Herald message
         xmpp_msg = self._bot.make_message(mto=target,
                                           mbody=content,
