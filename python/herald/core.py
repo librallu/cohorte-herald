@@ -440,8 +440,8 @@ class Herald(object):
 
         :param message: A MessageReceived bean forged by the transport
         """
-        print("incoming message : {}".format(message))
-        print("target : {}".format(message.get_header('final_destination')))
+        # print("incoming message : {}".format(message))
+        # print("target : {}".format(message.get_header('final_destination')))
         with self.__gc_lock:
             if message.uid in self.__treated:
                 # Message already handled, maybe it has been received by
@@ -470,6 +470,10 @@ class Herald(object):
         except IndexError:
             # Not enough arguments for a directory update: ignore
             pass
+
+        # if the message needs to be resent
+        if message.get_header('group') is not None:
+            self.fire_group(message, message.get_header('group'))
 
         # if the message needs to be routed
         if self._is_destination(message):
@@ -509,6 +513,14 @@ class Herald(object):
         """
         message.add_header('final_destination', destination)
 
+    @staticmethod
+    def _extract_target(message):
+        """
+        :param message: message to extract target
+        :return: target extracted
+        """
+        return message.get_header('final_destination')
+
     def _in_neighbours(self, peer):
         """
         :param peer: peer to check
@@ -540,7 +552,7 @@ class Herald(object):
             #
             # print("adding for the moment {} to message".format(target))
             self._add_destination(message, target)
-            print("distant target : {}".format(message.get_header('final_destination')))
+            # print("distant target : {}".format(message.get_header('final_destination')))
 
             if self._is_router():
                 next_hop = self._routing.get_next_hop_to(target)
@@ -793,6 +805,14 @@ class Herald(object):
 
         return message.uid
 
+    @staticmethod
+    def _add_group_header(message, group):
+        """
+        :param message: message to tag grouped
+        :param group: group used
+        """
+        message.add_header('group', group)
+
     def fire_group(self, group, message):
         """
         Fires (and forget) the given message to the given group of peers
@@ -803,7 +823,10 @@ class Herald(object):
         :raise KeyError: Unknown group
         :raise NoTransport: No transport found to send the message
         """
-        # FIXME check routing later in there
+        # routing : add a group header for
+        # further resending through the network
+        self._add_group_header(message, group)
+
         # Get all peers known in the group
         all_peers = self._directory.get_peers_for_group(group)
         if not all_peers:
