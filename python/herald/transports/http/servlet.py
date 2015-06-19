@@ -349,14 +349,6 @@ class HeraldServlet(object):
 
         if subject.startswith(peer_contact.SUBJECT_DISCOVERY_PREFIX):
             # Handle discovery message
-
-            # FIXME: remove this later
-            def _splat_content(message):
-                if isinstance(message.content, dict):
-                    if 'routing_content' in message.content:
-                        message._content = message.content['routing_content']
-            _splat_content(message)
-
             self.__contact.herald_message(self._core, message)
         else:
             # All other messages are given to Herald Core
