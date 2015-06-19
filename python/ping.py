@@ -36,12 +36,13 @@ __docformat__ = "restructuredtext en"
 # ------------------------------------------------------------------------------
 
 from pelix.ipopo.decorators import ComponentFactory, Provides, \
-    Validate, Invalidate, Instantiate
+    Validate, Invalidate, Instantiate, Property
 
 PING_PONG_SERVICE = "herald.test.ping_pong"
 
 @ComponentFactory("herald-ping-test-factory")
 @Provides(PING_PONG_SERVICE)
+@Property("_export", "service.exported.interfaces", "*")
 @Instantiate('herald-ping-test')
 class PingTest:
     """
