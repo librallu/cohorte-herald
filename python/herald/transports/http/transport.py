@@ -207,6 +207,9 @@ class HttpTransport(object):
             content = utils.to_str(message.content)
         else:
             # Convert content to JSON
+            print("debug: message: {}".format(message))
+            print(type(message))
+            print(message.content)
             content = utils.to_json(message)
             
         return headers, content

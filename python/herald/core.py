@@ -472,8 +472,10 @@ class Herald(object):
             pass
 
         # if the message needs to be resent
-        if message.get_header('group') is not None:
-            self.fire_group(message, message.get_header('group'))
+        # FIXME for now, it's commented. Maybe we will use an other
+        # FIXME component for redirecting broadcasts
+        # if self._is_router() and message.get_header('group') is not None:
+        #     self.fire_group(message.get_header('group'), message)
 
         # if the message needs to be routed
         if self._is_destination(message):
@@ -763,6 +765,10 @@ class Herald(object):
         :raise KeyError: Unknown peer UID
         :raise NoTransport: No transport found to send the message
         """
+        # FIXME: quick fix : xmlrpc sends bytes instead of strings
+        if isinstance(message.content, bytes):
+            message.set_content(message.content.decode("utf8"))
+
         # Standard behavior
         # Get the Peer object
         if not isinstance(target, beans.Peer):
@@ -1098,9 +1104,11 @@ class Herald(object):
         if subject is None:
             subject = '/'.join(('reply', message.subject))
 
+        reply_msg = beans.Message(subject, content)
+        reply_msg.add_header('replies-to', message.uid)
         try:
             # Try to reuse the same transport
-            self._fire_reply(beans.Message(subject, content), message)
+            self._fire_reply(reply_msg, message)
         except NoTransport:
             # Continue...
             pass
@@ -1111,7 +1119,7 @@ class Herald(object):
         # If not possible: fire a standard reply
         try:
             # Fire the reply
-            self.fire(message.sender, beans.Message(subject, content))
+            self.fire(message.sender, reply_msg)
         except KeyError:
             # Convert KeyError to NoTransport
             # FIXME consider using routing mechanism to test sending messages
