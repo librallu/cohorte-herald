@@ -472,8 +472,6 @@ class Herald(object):
             pass
 
         # if the message needs to be resent
-        # FIXME for now, it's commented. Maybe we will use an other
-        # FIXME component for redirecting broadcasts
         if self._is_router() and message.get_header('group') is not None:
             # print("$"*42+" {}".format(message.get_header('group')))
             self.fire_group(message.get_header('group'), message)
@@ -582,8 +580,6 @@ class Herald(object):
             - 'no-listener': means that there is no
                              listener found for this subject
         """
-        # FIXME maybe it will be useful to check 'not-router' error message
-        # FIXME in case if a router send a Road message to a non router
         if kind == 'no-listener':
             # No listener found for a given message
             # ... release send() calls
@@ -733,7 +729,6 @@ class Herald(object):
         try:
             transport = self._transports[reply_to.access]
         except KeyError:
-            # FIXME maybe we need to check if the message can be routed
             # Reception transport is not available anymore...
             raise NoTransport(beans.Target(uid=reply_to.sender),
                               "No reply transport for access {0}"
@@ -745,13 +740,11 @@ class Herald(object):
                 peer = self._directory.get_peer(reply_to.sender)
             except KeyError:
                 peer = None
-                # FIXME idem
             try:
                 # Send the reply
                 self.fire(peer, message)
 
             except InvalidPeerAccess:
-                # FIXME idem
                 raise NoTransport(beans.Target(uid=reply_to.sender),
                                   "Can't reply to {0} using {1} transport"
                                   .format(peer, reply_to.access))

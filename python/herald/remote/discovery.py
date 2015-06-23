@@ -185,18 +185,6 @@ class HeraldDiscovery(object):
             # First contact
             # Check if we know the sending peer
             # # (peer discovery process)
-            # if message.sender not in self._directory:
-                # =========
-                # Routing comment: this case will happen when we add
-                # routing. We comment this section because it is not useful
-                # anymore.
-                # ==========
-                # Unknown sender: ignore message (we can't use those services)
-                # FIXME: condition to be removed once the peer discovery has
-                # been checked: this should never happen
-                # _logger.critical("Sender of 'contact' is unknown: %s",
-                #                  message.sender)
-                # return
 
             sender = self._original_sender(message)
             if sender is None:
