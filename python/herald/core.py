@@ -474,8 +474,9 @@ class Herald(object):
         # if the message needs to be resent
         # FIXME for now, it's commented. Maybe we will use an other
         # FIXME component for redirecting broadcasts
-        # if self._is_router() and message.get_header('group') is not None:
-        #     self.fire_group(message.get_header('group'), message)
+        if self._is_router() and message.get_header('group') is not None:
+            # print("$"*42+" {}".format(message.get_header('group')))
+            self.fire_group(message.get_header('group'), message)
 
         # if the message needs to be routed
         if self._is_destination(message):
@@ -538,6 +539,9 @@ class Herald(object):
         :param target: target uid
         :param message: message to fire.
         """
+
+        if target is None:  # FIXME when adding routing groups, we have None in targets
+            return
 
         # if target is a Bean, transform it to a UID
         if isinstance(target, beans.Peer):
@@ -909,8 +913,12 @@ class Herald(object):
         :raise HeraldTimeout: Timeout raised before getting an answer
         """
         # Get the Peer object
-        if not isinstance(target, beans.Peer):
-            peer = self._directory.get_peer(target)
+        # if not isinstance(target, beans.Peer):
+        #     peer = self._directory.get_peer(target)
+        # else:
+        #     peer = target
+        if isinstance(target, beans.Peer):
+            peer = target.uid
         else:
             peer = target
 
@@ -1106,6 +1114,7 @@ class Herald(object):
 
         reply_msg = beans.Message(subject, content)
         reply_msg.add_header('replies-to', message.uid)
+
         try:
             # Try to reuse the same transport
             self._fire_reply(reply_msg, message)
@@ -1122,7 +1131,6 @@ class Herald(object):
             self.fire(message.sender, reply_msg)
         except KeyError:
             # Convert KeyError to NoTransport
-            # FIXME consider using routing mechanism to test sending messages
             raise NoTransport(beans.Target(uid=message.sender),
                               "No access to reply to {0}"
                               .format(message.sender))

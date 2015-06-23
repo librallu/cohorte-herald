@@ -82,6 +82,9 @@ class HeraldDiscovery(object):
         self._dispatcher = None
         self._registry = None
 
+        # private attributes
+        self._known_peers = set()
+
     def _dump_endpoint(self, endpoint):
         """
         Converts an ExportEndpoint bean to a dictionary.
@@ -133,15 +136,18 @@ class HeraldDiscovery(object):
         """
         return '/'.join(('herald', 'rpc', 'discovery', kind))
 
-    def __send_message(self, kind, content):
+    def __send_message(self, kind, content, group='all'):
         """
         Fires a discovery message to all peers
 
         :param kind: Kind of discovery message
         :param content: Content of the message
+        :param group: group to send the message (default: all)
         """
-        self._herald.fire_group('all', beans.Message(self.__subject(kind),
-                                                     content))
+        msg = beans.Message(self.__subject(kind), content)
+        # add the original sender
+        msg.add_header('original_sender', self._directory.local_uid)
+        self._herald.fire_group(group, msg)
 
     def __register_endpoints(self, peer_uid, endpoints_dicts):
         """
@@ -157,6 +163,18 @@ class HeraldDiscovery(object):
             except KeyError as ex:
                 _logger.error("Unreadable endpoint from %s: missing %s",
                               peer_uid, ex)
+
+    @staticmethod
+    def _original_sender(message):
+        """
+        Returns the original sender of the message
+        :param message:
+        :return:
+        """
+        origin = message.get_header('original_sender')
+        if origin is not None:
+            return origin
+        return None
 
     def herald_message(self, herald_svc, message):
         """
@@ -180,13 +198,31 @@ class HeraldDiscovery(object):
                 #                  message.sender)
                 # return
 
+            sender = self._original_sender(message)
+            if sender is None:
+                print('INFO: discovery/herald_message: \
+                    original_sender=None, setting to {}'.format(message.sender))
+                sender = message.sender
+
+            if sender in self._known_peers:
+                # In this case, we have already seen this message
+                # so it will not do anything with this message
+                print("INFO: already known peer: {}".format(sender))
+                return
+            # note that we have seen the sender
+            self._known_peers.add(sender)
+
             # Register the new endpoints
             self.__register_endpoints(message.sender, message.content)
 
             # Reply with the whole list of our exported endpoints
             endpoints = self._dump_endpoints(self._dispatcher.get_endpoints())
-            herald_svc.reply(message, endpoints, self.__subject("add"))
-        elif kind == 'add' and message.sender in self._directory:
+            # print("SENDER: ".format(message.sender))
+            if message.sender is not None:
+                herald_svc.reply(message, endpoints, self.__subject("add"))
+
+        # elif kind == 'add' and message.sender in self._directory:
+        elif kind == 'add':
             # New endpoint available on a known peer
             # => Register the new endpoints
             self.__register_endpoints(message.sender, message.content)
@@ -201,16 +237,20 @@ class HeraldDiscovery(object):
         else:
             _logger.debug("Unknown kind of discovery event: %s", kind)
 
-    def peer_registered(self, peer):
+    def peer_registered(self, peer, group='all'):
         """
         A new peer has been registered in Herald: send it a contact information
 
         :param peer: The new peer
+        :param group: inform the destination to broadcast the message if it
+            is a router in the group 'group'
         """
         # Send a contact message, with our list of endpoints
         endpoints = self._dump_endpoints(self._dispatcher.get_endpoints())
-        self._herald.fire(peer,
-                          beans.Message(self.__subject('contact'), endpoints))
+        msg = beans.Message(self.__subject('contact'), endpoints)
+        msg.add_header('group', group)
+        msg.add_header('original_sender', self._directory.local_uid)
+        self._herald.fire(peer, msg)
 
     def peer_updated(self, peer, access_id, data, previous):
         """

@@ -202,7 +202,14 @@ class HeraldRpcServiceExporter(commons.AbstractRpcServiceExporter):
         :param message: A message bean
         """
         result = self._dispatcher.dispatch(message.content)
-        herald_svc.reply(message, result, SUBJECT_REPLY)
+
+        # answer to the message
+        reply_msg = beans.Message(SUBJECT_REPLY, result)
+        reply_msg.add_header('replies-to', message.uid)
+        origin = message.get_header('original_sender')
+        if origin is None:  # in the case it was not routed
+            origin = message.sender
+        herald_svc.fire(origin, reply_msg)
 
 # ------------------------------------------------------------------------------
 
@@ -273,6 +280,7 @@ class _XmlRpcMethod(object):
 
 @ComponentFactory(herald.remote.FACTORY_HERALD_XMLRPC_IMPORTER)
 @Requires('_herald', herald.SERVICE_HERALD)
+@Requires('_directory', herald.SERVICE_DIRECTORY)
 @Provides(pelix.remote.SERVICE_IMPORT_ENDPOINT_LISTENER)
 @Property('_kinds', pelix.remote.PROP_REMOTE_CONFIGS_SUPPORTED,
           (HERALDRPC_CONFIGURATION,))
@@ -298,7 +306,9 @@ class HeraldRpcServiceImporter(commons.AbstractRpcServiceImporter):
         """
         Method called by the proxy to send a message over Herald
         """
-        return self._herald.send(peer, beans.Message(subject, content))
+        msg = beans.Message(subject, content)
+        msg.add_header('original_sender', self._directory.local_uid)
+        return self._herald.send(peer, msg)
 
     def make_service_proxy(self, endpoint):
         """
