@@ -88,6 +88,9 @@ def main(http_port, peer_name, node_name, app_id):
          # ROUTING
          'herald.routing_handler',
 
+         # TEST
+         'displayMessages',
+
          ),
         {herald.FWPROP_NODE_UID: node_name,
          herald.FWPROP_NODE_NAME: node_name,

@@ -91,6 +91,9 @@ def main(http_port, peer_name, node_name, app_id):
          'herald.routing_roads',
          'herald.routing_json',
 
+         # TEST
+         'displayMessages',
+
          ),
         {herald.FWPROP_NODE_UID: node_name,
          herald.FWPROP_NODE_NAME: node_name,
