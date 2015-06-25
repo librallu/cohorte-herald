@@ -79,6 +79,8 @@ class SerialAutomata:
         """
         if list is None:
             return 0
+        elif len(list) == 1:
+            return list[0]
         else:
             return list[0]+10*SerialAutomata.int_from_numbers(list[1:])
 
@@ -91,7 +93,7 @@ class SerialAutomata:
             if ord('0') <= ord(char) <= ord('9'):
                 self._number_list.insert(0,ord(char)-ord('0'))
             elif char == self._delimiter_char:
-                self.remaining = self.int_from_numbers(self._number_list)
+                self._remaining = self.int_from_numbers(self._number_list)
                 self._number_list = []
                 self._is_reading_number = False
             else:
@@ -99,7 +101,7 @@ class SerialAutomata:
         else:  # if we are reading a message
             self._remaining -= 1
             if self._remaining == 0:
-                self.previous_messages.append(self._current_message)
+                self._previous_messages.append(self._current_message)
                 self._current_message = ''
                 self._is_reading_number = True
             else:
