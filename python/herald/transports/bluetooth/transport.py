@@ -95,6 +95,19 @@ class HttpTransport(object):
         # Local UID
         self.__peer_uid = None
 
+    def __get_access(peer, extra=None):
+        """
+        Compute MAC addrees from the peer uid given in parameter
+        :param peer: A peer Bean
+        :return: a mac address or None
+        """
+        mac = None
+        if extra is not None:
+            mac = extra.get('mac')
+        if not mac:
+            mac = peer.get_access(ACCESS_ID).access
+        return mac
+
     def fire(self, peer, message, extra=None):
         """
         Fires a herald message
@@ -103,7 +116,16 @@ class HttpTransport(object):
         :param extra:
         :return:
         """
-        pass
+        mac = self.__get_access(peer)
+
+        # Log before sending
+        self._probe.store(
+            herald.PROBE_CHANNEL_MSG_SEND,
+            {"uid": message.uid, "timestamp": time.time(),
+             "transport": ACCESS_ID, "subject": message.subject,
+             "target": peer.uid if peer else "<unknown>",
+             "transportTarget": mac})
+
 
     def fire_group(self, group, peers, message):
         """

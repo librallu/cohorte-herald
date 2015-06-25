@@ -114,6 +114,12 @@ class Discovery:
             self._devices_names = dict()
         _logger.info("devices: {}".format(self._devices_names))
 
+    def devices_set(self):
+        """
+        :return: set of devices detected.
+        """
+        return set(self._devices_names)
+
     def clean_devices(self):
         """
         clean known devices.
