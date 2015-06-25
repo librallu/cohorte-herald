@@ -33,13 +33,14 @@ class SerialAutomata:
     the flux.
     """
 
-    def __init__(self, delimiter_string):
+    def __init__(self):
         """
-        :param delimiter_string: delimiter pattern in the flux
-            (needs to be at least 1 character long
+        initialize attributes
         """
-        self._delimiter_string = delimiter_string
-        self._pattern_position = 0
+        self._delimiter_char = ':'  # it can be anything except a number
+        self._is_reading_number = True
+        self._remaining = 0
+        self._number_list = []
         self._current_message = ''
         self._previous_messages = []
 
@@ -64,22 +65,43 @@ class SerialAutomata:
         for i in part:
             self._read_char(i)
 
+    @staticmethod
+    def int_from_numbers(list):
+        """
+        :param list: list of numbers
+        :return: integer value of a list of numbers in a reverse order
+
+        >>> SerialAutomata.int_from_numbers([])
+        0
+
+        >>> SerialAutomata.int_from_numbers([1,2,3])
+        321
+        """
+        if list is None:
+            return 0
+        else:
+            return list[0]+10*SerialAutomata.int_from_numbers(list[1:])
+
     def _read_char(self, char):
         """
         Reads a char from the input flux.
         :param char: input
         """
-        if char == self._delimiter_string[self._pattern_position]:
-            # if we have matched the delimiter pattern
-            if self._pattern_position == len(self._delimiter_string)-1:
-                # the message is over (we have matched all the delimiter)
-                self._pattern_position = 0
-                self._previous_messages.append(self._current_message)
-                self._current_message = ''
+        if self._is_reading_number:
+            if ord('0') <= ord(char) <= ord('9'):
+                self._number_list.insert(0,ord(char)-ord('0'))
+            elif char == self._delimiter_char:
+                self.remaining = self.int_from_numbers(self._number_list)
+                self._number_list = []
+                self._is_reading_number = False
             else:
-                # we check the next character
-                self._pattern_position += 1
-        else:
-            # if we have not matched the delimiter
-            self._current_message += char
-            self._pattern_position = 0
+                print('SERIAL AUTOMATA: bad data ignoring char {}'.format(char))
+        else:  # if we are reading a message
+            self._remaining -= 1
+            if self._remaining == 0:
+                self.previous_messages.append(self._current_message)
+                self._current_message = ''
+                self._is_reading_number = True
+            else:
+                self._current_message = self._current_message+char
+
