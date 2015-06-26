@@ -115,7 +115,7 @@ class Discovery:
         """
         self._del_listeners.append(f)
 
-    def check_differences(self, old, new):
+    def _check_differences(self, old, new):
         """
         checks differences between old and new neighbourhood.
         launch listener call if some peers showed up or disappeared
@@ -136,7 +136,6 @@ class Discovery:
         neighbourhood
         """
         try:
-            _logger.info("start searching devices...")
             devices = bluetooth.discover_devices(
                 duration=self._discovery_duration,
                 lookup_names=True)
@@ -149,7 +148,6 @@ class Discovery:
                 self._check_differences(set(old), set(self._devices_names))
         except bluetooth.btcommon.BluetoothError:
             self._devices_names = dict()
-        _logger.info("devices: {}".format(self._devices_names))
 
     def devices_set(self):
         """
