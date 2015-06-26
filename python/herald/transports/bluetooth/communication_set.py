@@ -72,6 +72,10 @@ class CommunicationSet:
         self._connections[target].send_message(msg)
 
     def register_callback(self, f):
+        """
+        :param f: f(msg, mac) that is called when
+        a message is received.
+        """
         with self._lock:
             self._callbacks.append(f)
 
