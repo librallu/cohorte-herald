@@ -62,3 +62,8 @@ BLUETOOTH_DISCOVERY_SERVICE = "herald.transports.bluetooth.discovery"
 """
 Service discovery for bluetooth
 """
+
+BLUETOOTH_MANAGER_SERVICE = "herald.transports.bluetooth.manager"
+"""
+Service for managing bluetooth connections
+"""
