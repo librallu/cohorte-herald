@@ -60,7 +60,7 @@ class BluetoothManager:
     def __init__(self):
         self._discovery = None
 
-        self.coms = None
+        self._coms = None
 
     def _when_change(self, mac):
         self.coms.update_devices(self._discovery.devices_set())
@@ -69,7 +69,7 @@ class BluetoothManager:
         """
         :param _: context (not used)
         """
-        self.coms = CommunicationSet()
+        self._coms = CommunicationSet()
         self._discovery.listen_new(self._when_change)
         self._discovery.listen_del(self._when_change)
 
@@ -80,7 +80,7 @@ class BluetoothManager:
         self.coms.close()
         while not self.coms.close_ended():
             pass
-        self.coms = None
+        self._coms = None
 
     def listen_new(self, f):
         """
@@ -109,7 +109,12 @@ class BluetoothManager:
         """
         if not self.coms.has_connection(mac):
             return False
-        self.coms.send_to(mac, message)
+        self._coms.send_to(mac, message)
         return True
 
-    def handle_messages
+    def register_callback(self, f):
+        """
+        :param f: f(msg, mac) that is called when
+        a message is received.
+        """
+        self._coms.register_callback(f)
