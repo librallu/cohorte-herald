@@ -60,6 +60,8 @@ import time
 
 import bluetooth
 
+
+
 # ------------------------------------------------------------------------------
 
 _logger = logging.getLogger(__name__)
@@ -71,6 +73,7 @@ _logger = logging.getLogger(__name__)
 @RequiresBest('_probe', herald.SERVICE_PROBE)
 @Requires('_directory', herald.SERVICE_DIRECTORY)
 @Requires('_local_recv', SERVICE_BLUETOOTH_RECEIVER)
+@Requires('_discovery', herald.transports.bluetooth.BLUETOOTH_DISCOVERY_SERVICE)
 @Provides((herald.SERVICE_TRANSPORT, SERVICE_BLUETOOTH_TRANSPORT))
 @Property('_access_id', herald.PROP_ACCESS_ID, ACCESS_ID)
 @Instantiate('herald-bluetooth-transport')
@@ -95,6 +98,9 @@ class HttpTransport(object):
         # Local UID
         self.__peer_uid = None
 
+        # discovery service
+        self._discovery = None
+
     def __get_access(peer, extra=None):
         """
         Compute MAC addrees from the peer uid given in parameter
@@ -117,6 +123,7 @@ class HttpTransport(object):
         :return:
         """
         mac = self.__get_access(peer)
+        content = self.__prepare_message(message)
 
         # Log before sending
         self._probe.store(
@@ -126,6 +133,19 @@ class HttpTransport(object):
              "target": peer.uid if peer else "<unknown>",
              "transportTarget": mac})
 
+        self._fire(peer, content, extra)
+
+    def _fire(self, peer, message, extra=None):
+        """
+        Fire only the message.
+        without probe logging and preparing message
+        :param peer:
+        :param message:
+        :param extra:
+        :return:
+        """
+        # FIXME: complete code here to send a bluetooth message
+        pass
 
     def fire_group(self, group, peers, message):
         """
@@ -133,6 +153,19 @@ class HttpTransport(object):
         :param group:
         :param peers:
         :param message:
-        :return:
+        :return: list of reached peers
         """
-        pass
+        content = self.__prepare_message(message, target_group=group)
+
+        # Store the message once
+        self._probe.store(
+            herald.PROBE_CHANNEL_MSG_CONTENT,
+            {"uid": message.uid, "content": content}
+        )
+
+        # Send a request to each peers
+        for peer in peers:
+            self._fire(peer, content)
+
+        # FIXME maybe some of them will not be connected
+        return peers

@@ -57,3 +57,8 @@ SERVICE_BLUETOOTH_TRANSPORT = "herald.bluetooth.transport"
 """
 Specification of the Bluetooth transport implementation (sending side)
 """
+
+BLUETOOTH_DISCOVERY_SERVICE = "herald.transports.bluetooth.discovery"
+"""
+Service discovery for bluetooth
+"""
