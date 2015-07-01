@@ -97,7 +97,7 @@ class Connection:
                 msg = self._receive_message()
             if msg is None:
                 print("connection aborted with pair {}".format(self._mac))
-                self._err_callback()
+                self._err_callback(self._mac)
             else:
                 self._valid = True
                 # starting handle thread for new messages

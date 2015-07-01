@@ -116,6 +116,15 @@ class Discovery:
             for f in self._add_listeners:
                 f(i)
 
+    def delete_mac(self, mac):
+        """
+        deletes a mac from the known devices
+        :param mac: mac address
+        :return: nothing
+        """
+        if mac in self._devices_names:
+            del self._devices_names[mac]
+
     def _search_devices(self):
         """
         update attributes with the different bluetooth pairs known in the
@@ -123,13 +132,11 @@ class Discovery:
         """
         while self._active:
             try:
-                print('searching devices...')
                 devices = bluetooth.discover_devices(
                     duration=self._discovery_duration,
                     lookup_names=True)
                 with self._lock:
-                    old = self._devices_names
-                    self._devices_names = dict()
+                    old = self._devices_names.copy()
                     for i in devices:
                         if i[1] in self._filter:
                             self._devices_names[i[0]] = i[1]

@@ -81,7 +81,7 @@ class CommunicationSet:
         """
         for i in self._leave_callbacks:
             i(mac)
-        self._connections.pop(i)
+        self._connections.pop(mac)
 
     def send_to(self, target, msg):
         """

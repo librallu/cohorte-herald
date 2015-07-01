@@ -74,6 +74,9 @@ class BluetoothManager:
         print('starting bluetooth manager')
         self._coms = CommunicationSet()
         self._discovery.listen_new(self._when_change)
+        self._coms.register_leaving_callback(
+            self._discovery.delete_mac
+        )
 
     @Invalidate
     def invalidate(self, _):
@@ -106,3 +109,12 @@ class BluetoothManager:
         """
         print('callback registered in bluetooth manager')
         self._coms.register_callback(f)
+
+    def listen_del(self, f):
+        """
+        register f for be called when a peer
+        is removed
+        :param f: f(mac) added to callbacks
+        :return: nothing
+        """
+        self._coms.register_leaving_callback(f)
