@@ -101,7 +101,7 @@ class SerialAutomata:
         else:  # if we are reading a message
             self._remaining -= 1
             if self._remaining == 0:
-                self._previous_messages.append(self._current_message)
+                self._previous_messages.append(self._current_message+char)
                 self._current_message = ''
                 self._is_reading_number = True
             else:
