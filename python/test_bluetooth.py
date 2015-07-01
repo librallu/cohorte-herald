@@ -50,6 +50,7 @@ _logger = logging.getLogger(__name__)
 
 @ComponentFactory("herald-bluetooth-test-factory")
 @Requires('_discovery', herald.transports.bluetooth.BLUETOOTH_DISCOVERY_SERVICE)
+@Requires('_manager', herald.transports.bluetooth.BLUETOOTH_MANAGER_SERVICE)
 @Instantiate('herald-bluetooth-test-test')
 class BluetoothTest:
     """ A simple Test bluetooth module that displays information from
@@ -59,10 +60,11 @@ class BluetoothTest:
 
     def __init__(self):
         self._discovery = None
+        self._manager = None
 
     @Validate
     def validate(self, _):
         # ask to be notified when there is a new device in the bluetooth network
         self._discovery.listen_new(lambda x: print(x+" appears"))
-        self._discovery.listen_del(lambda x: print(x+" disappears"))
+        self._manager.listen_del(lambda x: print(x+" disappears"))
         print('LISTENING TO THE BLUETOOTH NETWORK !')
