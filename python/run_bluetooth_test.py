@@ -81,6 +81,8 @@ def main(http_port, peer_name, node_name, app_id):
 
          # bluetooth test
          'herald.transports.bluetooth.discovery',
+         'herald.transports.bluetooth.transport',
+         'herald.transports.bluetooth.bluetooth_manager',
          'test_bluetooth',
 
          # RPC
