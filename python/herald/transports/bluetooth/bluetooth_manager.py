@@ -63,8 +63,8 @@ class BluetoothManager:
 
         self._coms = None
 
-    def _when_change(self, _):
-        self._coms.update_devices(self._discovery.devices_set())
+    def _when_added(self, mac):
+        self._coms.update_devices([mac])
 
     @Validate
     def validate(self, _):
@@ -73,7 +73,7 @@ class BluetoothManager:
         """
         print('starting bluetooth manager')
         self._coms = CommunicationSet()
-        self._discovery.listen_new(self._when_change)
+        self._discovery.listen_new(self._when_added)
         self._coms.register_leaving_callback(
             self._discovery.delete_mac
         )
@@ -118,3 +118,12 @@ class BluetoothManager:
         :return: nothing
         """
         self._coms.register_leaving_callback(f)
+
+    def listen_new(self, f):
+        """
+        register f for be called when a peer
+        is new
+        :param f: f(mac) added to callbacks
+        :return: nothing
+        """
+        self._coms.register_starting_callback(f)

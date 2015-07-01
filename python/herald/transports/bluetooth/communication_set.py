@@ -49,6 +49,7 @@ class CommunicationSet:
         self._callbacks = []
         self._lock = threading.Lock()   # for mutex
         self._leave_callbacks = []
+        self._start_callbacks = []
 
     def has_connection(self, mac):
         """
@@ -73,6 +74,15 @@ class CommunicationSet:
         """
         self._leave_callbacks.append(f)
 
+    def register_starting_callback(self, f):
+        """
+        register f for be called when a peer
+        is started
+        :param f: f(mac) added to callbacks
+        :return: nothing
+        """
+        self._start_callbacks.append(f)
+
     def _when_leave(self, mac):
         """
         called when a peer leaves
@@ -82,6 +92,15 @@ class CommunicationSet:
         for i in self._leave_callbacks:
             i(mac)
         self._connections.pop(mac)
+
+    def _when_start(self, mac):
+        """
+        called when a peer appears
+        :param mac: mac address of the peer
+        :return: nothing
+        """
+        for i in self._start_callbacks:
+            i(mac)
 
     def send_to(self, target, msg):
         """
@@ -112,8 +131,7 @@ class CommunicationSet:
 
     def update_devices(self, mac_list):
         """
-        updates device connections. Start new connections or stop
-        some if necessary.
+        updates device connections. Start new connections.
         :param mac_list: list of devices list(mac)
         """
         # if a device needs to be added
@@ -124,7 +142,8 @@ class CommunicationSet:
                     i,
                     msg_callback=self._handle_messages,
                     timeout=10,
-                    err_callback=self._when_leave
+                    err_callback=self._when_leave,
+                    start_callback=self._when_start
                 )
 
     def close(self):

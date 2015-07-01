@@ -46,7 +46,8 @@ def to_string(msg):
 class Connection:
 
     def __init__(self, mac, msg_callback,
-                 msg_handle_freq=1, timeout=2, err_callback=None):
+                 msg_handle_freq=1, timeout=2,
+                 err_callback=None, start_callback=None):
         """
         constructor of a connection.
         Start a new process to initialize the connection
@@ -62,10 +63,13 @@ class Connection:
                 elsewhere, waits the timeout before quitting.
         :param err_callback: function to be called if
                 there is an error when initialization connection.
+        :param start_callback: function to be called when
+                the peer is started (has responded correctly)
         :return:
         """
         self._timeout = timeout
         self._err_callback = err_callback
+        self._start_callback = start_callback
         self._mac = mac
         self._msg_callback = msg_callback
         self._msg_handle_freq = msg_handle_freq
@@ -103,6 +107,7 @@ class Connection:
                 # starting handle thread for new messages
                 self._loop_thread = threading.Thread(target=self._loop)
                 self._loop_thread.start()
+                self._start_callback(self._mac)
         except bluetooth.btcommon.BluetoothError:
             if self._err_callback is None:
                 pass
