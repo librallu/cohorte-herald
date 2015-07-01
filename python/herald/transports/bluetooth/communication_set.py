@@ -91,7 +91,9 @@ class CommunicationSet:
         """
         for i in self._leave_callbacks:
             i(mac)
-        self._connections.pop(mac)
+        if mac in self._connections:
+            self._connections[mac].close()
+            self._connections.pop(mac)
 
     def _when_start(self, mac):
         """
