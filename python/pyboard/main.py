@@ -31,7 +31,6 @@ import automata
 photo_pin = 'X12'
 led_pin = 'X11'
 HELLO_MESSAGE = b'[[[HELLO]]]'
-SEPARATOR = b'|||'
 
 # bluetooth connection initialization
 uart = pyb.UART(1, 38400)
@@ -61,28 +60,27 @@ def to_string(msg):
 
 def put_message(msg):
     print("sending:")
-    print(msg+SEPARATOR)
-    uart.write(msg+SEPARATOR)
+    print(str(len(msg))+msg)
+    uart.write(str(len(msg))+msg)
 
 def get_message():
     if not uart.any():
         return
     msg = uart.read()
+    print('incoming:')
     print(msg)
     automata.read(to_string(msg))
     if not automata.any_message():
         return
     msg = automata.get_message()
-    print("automata ok")
+    print("automata ok:")
     print(msg)
     if msg == HELLO_MESSAGE:
         put_message(HELLO_MESSAGE)
     else:
         return msg
 
-
-
-automata = automata.SerialAutomata(to_string(SEPARATOR))
+automata = automata.SerialAutomata()
 
 while True:
     #  send_photo()
