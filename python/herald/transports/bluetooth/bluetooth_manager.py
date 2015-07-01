@@ -42,6 +42,7 @@ from pelix.ipopo.decorators import ComponentFactory, \
     Validate, Invalidate, Instantiate, Provides, Requires
 import logging
 import herald.utils
+import herald.beans as beans
 from herald.transports.bluetooth.communication_set import CommunicationSet
 
 # ------------------------------------------------------------------------------
@@ -50,11 +51,11 @@ _logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------------------
 
-
-@ComponentFactory("herald-bluetooth-manager-factory")
+@ComponentFactory("herald-bluetooth_manager-factory")
 @Requires('_discovery', herald.transports.bluetooth.BLUETOOTH_DISCOVERY_SERVICE)
+@Requires('_directory', herald.SERVICE_DIRECTORY)
 @Provides(herald.transports.bluetooth.BLUETOOTH_MANAGER_SERVICE)
-@Instantiate('herald-bluetooth-manager-test')
+@Instantiate('herald-bluetooth_manager-test')
 class BluetoothManager:
 
     def __init__(self):
@@ -62,42 +63,28 @@ class BluetoothManager:
 
         self._coms = None
 
-    def _when_change(self, mac):
-        self.coms.update_devices(self._discovery.devices_set())
+    def _when_change(self, _):
+        self._coms.update_devices(self._discovery.devices_set())
 
+    @Validate
     def validate(self, _):
         """
         :param _: context (not used)
         """
+        print('starting bluetooth manager')
         self._coms = CommunicationSet()
         self._discovery.listen_new(self._when_change)
-        self._discovery.listen_del(self._when_change)
 
+    @Invalidate
     def invalidate(self, _):
         """
         :param _: context (not used)
         """
         self.coms.close()
         while not self.coms.close_ended():
+            # waiting close of all connections
             pass
         self._coms = None
-
-    def listen_new(self, f):
-        """
-        add a listener for new elements
-        :param f: callback with a mac parameter
-        :return: nothing
-        """
-        self._discovery.listen_new(f)
-
-    def listen_del(self, f):
-        """
-        add a listener for deleted elements in
-        the bluetooth network
-        :param f: callback with a mac parameter
-        :return: nothing
-        """
-        self._discovery.listen_del(f)
 
     def fire(self, mac, message):
         """
@@ -117,4 +104,5 @@ class BluetoothManager:
         :param f: f(msg, mac) that is called when
         a message is received.
         """
+        print('callback registered in bluetooth manager')
         self._coms.register_callback(f)

@@ -31,7 +31,6 @@ import bluetooth
 from herald.transports.bluetooth.serial_automata import SerialAutomata
 
 HELLO_MESSAGE = '[[[HELLO]]]'
-DELIMITER = '|||'
 PORT = 1
 
 
@@ -72,7 +71,7 @@ class Connection:
         self._msg_handle_freq = msg_handle_freq
         self._valid = False
         self._socket = None
-        self._automata = SerialAutomata(DELIMITER)
+        self._automata = SerialAutomata()
         self._loop_thread = None
         self._init_thread = threading.Thread(target=self._init_connection)
         self._init_thread.start()
@@ -133,7 +132,7 @@ class Connection:
         # wait for the communication
         while check_valid and not self._valid:
             pass
-        self._socket.send(msg+DELIMITER)
+        self._socket.send(str(len(msg))+':'+msg)
 
     def _receive_message(self, with_timeout=True):
         """

@@ -48,6 +48,7 @@ class CommunicationSet:
         self._connections = {}
         self._callbacks = []
         self._lock = threading.Lock()   # for mutex
+        self._leave_callbacks = []
 
     def has_connection(self, mac):
         """
@@ -61,7 +62,26 @@ class CommunicationSet:
         """
         :return: list of peers known in the set
         """
-        return list(self._connections)
+        return set(self._connections)
+
+    def register_leaving_callback(self, f):
+        """
+        register f for be called when a peer
+        is removed
+        :param f: f(mac) added to callbacks
+        :return: nothing
+        """
+        self._leave_callbacks.append(f)
+
+    def _when_leave(self, mac):
+        """
+        called when a peer leaves
+        :param mac: mac address of peer
+        :return: nothing
+        """
+        for i in self._leave_callbacks:
+            i(mac)
+        self._connections.pop(i)
 
     def send_to(self, target, msg):
         """
@@ -96,24 +116,16 @@ class CommunicationSet:
         some if necessary.
         :param mac_list: list of devices list(mac)
         """
-        # if a device needs to be deleted
-        tmp = {}
-        for i in self._connections:
-            if i in mac_list:
-                tmp[i] = self._connections[i]
-            else:
-                print("set: deleting connection with: {}".format(i))
-                self._connections[i].close()
-
         # if a device needs to be added
         for i in mac_list:
-            if i not in tmp:
+            if i not in self._connections:
                 print("set: creating connection with: {}".format(i))
-                tmp[i] = Connection(i,
-                                    msg_callback=self._handle_messages,
-                                    timeout=10,
-                                    err_callback=lambda: self._connections.pop(i))
-        self._connections = tmp
+                self._connections[i] = Connection(
+                    i,
+                    msg_callback=self._handle_messages,
+                    timeout=10,
+                    err_callback=self._when_leave
+                )
 
     def close(self):
         """

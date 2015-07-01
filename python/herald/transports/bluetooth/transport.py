@@ -60,6 +60,7 @@ import time
 
 import bluetooth
 
+import herald.transports.peer_contact as peer_contact
 
 
 # ------------------------------------------------------------------------------
@@ -72,8 +73,8 @@ _logger = logging.getLogger(__name__)
 @ComponentFactory('herald-bluetooth-transport-factory')
 @RequiresBest('_probe', herald.SERVICE_PROBE)
 @Requires('_directory', herald.SERVICE_DIRECTORY)
-@Requires('_local_recv', SERVICE_BLUETOOTH_RECEIVER)
 @Requires('_discovery', herald.transports.bluetooth.BLUETOOTH_DISCOVERY_SERVICE)
+@Requires('_bluetooth', herald.transports.bluetooth.BLUETOOTH_MANAGER_SERVICE)
 @Provides((herald.SERVICE_TRANSPORT, SERVICE_BLUETOOTH_TRANSPORT))
 @Property('_access_id', herald.PROP_ACCESS_ID, ACCESS_ID)
 @Instantiate('herald-bluetooth-transport')
@@ -101,6 +102,27 @@ class HttpTransport(object):
         # discovery service
         self._discovery = None
 
+    @Validate
+    def validate(self, _):
+        """
+        :param _: context
+        :return: nothing
+        """
+        print('bluetooth transport starting')
+        self._bluetooth.register_callback(self._when_added)
+
+    def _when_added(self, mac):
+        print('BLUETOOTH: register peer with mac {}'.format(mac))
+        local_dump = self._directory.get_local_peer().dump()
+        extra = {'mac': mac}
+        try:
+            self.fire(
+                None,
+                beans.Message(peer_contact.SUBJECT_DISCOVERY_STEP_1,
+                              local_dump), extra)
+        except Exception as ex:
+            _logger.exception("Error contacting peer: %s", ex)
+
     def __get_access(peer, extra=None):
         """
         Compute MAC addrees from the peer uid given in parameter
@@ -117,13 +139,12 @@ class HttpTransport(object):
     def fire(self, peer, message, extra=None):
         """
         Fires a herald message
-        :param peer:
-        :param message:
-        :param extra:
-        :return:
+        :param peer: Bean to send the message
+        :param message: Message Bean to send
+        :param extra: extra informations (in this case, mac address)
+        :return: nothing
         """
-        mac = self.__get_access(peer)
-        content = self.__prepare_message(message)
+        mac = self.__get_access(peer, extra)
 
         # Log before sending
         self._probe.store(
@@ -133,39 +154,38 @@ class HttpTransport(object):
              "target": peer.uid if peer else "<unknown>",
              "transportTarget": mac})
 
-        self._fire(peer, content, extra)
+        self._fire(mac, message)
 
-    def _fire(self, peer, message, extra=None):
+    def _fire(self, mac, message):
         """
         Fire only the message.
         without probe logging and preparing message
-        :param peer:
-        :param message:
-        :param extra:
-        :return:
+        :param mac: mac address to send the message
+        :param message: message to send
+        :return: nothing
         """
-        # FIXME: complete code here to send a bluetooth message
-        pass
+        # send the message via the bluetooth_manager
+        message_string = utils.to_json(message)
+        print('bluetooth.transport._fire: about to fire {} to {}'.format(message_string, mac))
+        self._bluetooth.fire(mac, message_string)
 
     def fire_group(self, group, peers, message):
         """
         Fire a grouped herald message
-        :param group:
-        :param peers:
-        :param message:
+        :param group: string representing the group to send the message
+        :param peers: list(Bean) peers to send the message
+        :param message: message to send
         :return: list of reached peers
         """
-        content = self.__prepare_message(message, target_group=group)
-
         # Store the message once
         self._probe.store(
             herald.PROBE_CHANNEL_MSG_CONTENT,
-            {"uid": message.uid, "content": content}
+            {"uid": message.uid, "message": message}
         )
 
         # Send a request to each peers
         for peer in peers:
-            self._fire(peer, content)
+            self._fire(peer, message)
 
         # FIXME maybe some of them will not be connected
         return peers
