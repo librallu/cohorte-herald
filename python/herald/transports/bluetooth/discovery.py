@@ -52,7 +52,7 @@ _logger = logging.getLogger(__name__)
 
 @ComponentFactory("herald-bluetooth-discovery-factory")
 @Provides(herald.transports.bluetooth.BLUETOOTH_DISCOVERY_SERVICE)
-@Property('_discovery_duration', 'discovery_duration', 8)
+@Property('_discovery_duration', 'discovery_duration', 5)
 @Property('_filter', 'filter', ['PYBOARD'])
 @Instantiate('herald-bluetooth-discovery-test')
 class Discovery:

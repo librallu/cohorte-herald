@@ -154,7 +154,9 @@ class Connection:
             if recv != '':
                 self._automata.read(recv)
                 # print('automata reads '+recv)
-        return self._automata.get_message()
+        msg = self._automata.get_message()
+        print('msg received: {}'.format(msg))
+        return msg
 
     def close(self):
         """
