@@ -97,7 +97,7 @@ class BluetoothManager:
         :return: True if the message has been
         successfully sent and False elsewhere
         """
-        if not self.coms.has_connection(mac):
+        if not self._coms.has_connection(mac):
             return False
         self._coms.send_to(mac, message)
         return True

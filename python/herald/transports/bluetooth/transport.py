@@ -109,7 +109,7 @@ class HttpTransport(object):
         :return: nothing
         """
         print('bluetooth transport starting')
-        self._bluetooth.register_callback(self._when_added)
+        self._bluetooth.listen_new(self._when_added)
 
     def _when_added(self, mac):
         print('BLUETOOTH: register peer with mac {}'.format(mac))
@@ -123,6 +123,7 @@ class HttpTransport(object):
         except Exception as ex:
             _logger.exception("Error contacting peer: %s", ex)
 
+    @staticmethod
     def __get_access(peer, extra=None):
         """
         Compute MAC addrees from the peer uid given in parameter

@@ -28,10 +28,14 @@ Bluetooth connection object
 
 import threading
 import bluetooth
+import time
+import datetime
 from herald.transports.bluetooth.serial_automata import SerialAutomata
 
 HELLO_MESSAGE = '[[[HELLO]]]'
 PORT = 1
+DELAY_BETWEEN_TRIES = 2
+TIMEOUT = 5
 
 
 def to_string(msg):
@@ -79,6 +83,8 @@ class Connection:
         self._loop_thread = None
         self._init_thread = threading.Thread(target=self._init_connection)
         self._init_thread.start()
+        self._alive_thread = None
+        self._last_hello_received = None
 
     def _init_connection(self):
         """
@@ -107,12 +113,28 @@ class Connection:
                 # starting handle thread for new messages
                 self._loop_thread = threading.Thread(target=self._loop)
                 self._loop_thread.start()
+                self._alive_thread = threading.Thread(target=self._alive_loop)
+                self._alive_thread.start()
                 self._start_callback(self._mac)
         except bluetooth.btcommon.BluetoothError:
             if self._err_callback is None:
                 pass
             else:
-                self._err_callback()
+                self._err_callback(self._mac)
+
+    def _alive_loop(self):
+        """
+        loop that send a message every period of time, then
+        waits for a response. If there is no response,
+        close the connection
+        """
+        while self._valid:
+            last_ask = datetime.datetime.now()
+            time.sleep(DELAY_BETWEEN_TRIES)
+            self.send_message(HELLO_MESSAGE)
+            time.sleep(TIMEOUT)
+            if self._last_hello_received < last_ask:
+                self._err_callback(self._mac)
 
     def _loop(self):
         """
@@ -161,6 +183,10 @@ class Connection:
                 # print('automata reads '+recv)
         msg = self._automata.get_message()
         print('msg received: {}'.format(msg))
+        if to_string(HELLO_MESSAGE) == to_string(msg):
+            self._last_hello_received = datetime.datetime.now()
+        else:
+            print('different: {}/{}'.format(to_string(HELLO_MESSAGE), to_string(msg)))
         return msg
 
     def close(self):

@@ -127,6 +127,7 @@ class CommunicationSet:
         """
         with self._lock:
             for i in self._callbacks:
+                print('{}:{}'.format(msg,mac))
                 i(msg, mac)
 
     def update_devices(self, mac_list):
