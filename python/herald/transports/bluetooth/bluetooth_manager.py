@@ -83,8 +83,8 @@ class BluetoothManager:
         """
         :param _: context (not used)
         """
-        self.coms.close()
-        while not self.coms.close_ended():
+        self._coms.close()
+        while not self._coms.close_ended():
             # waiting close of all connections
             pass
         self._coms = None

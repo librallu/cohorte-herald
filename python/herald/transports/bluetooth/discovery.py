@@ -94,7 +94,7 @@ class Discovery:
         :return: nothing
         """
         self._active = False
-        self._thread.cancel()
+        self._thread.join()
 
     def listen_new(self, f):
         """
