@@ -52,8 +52,7 @@ _logger = logging.getLogger(__name__)
 
 @ComponentFactory("herald-bluetooth-discovery-factory")
 @Provides(herald.transports.bluetooth.BLUETOOTH_DISCOVERY_SERVICE)
-@Property('_interval', 'time_interval', 3)
-@Property('_discovery_duration', 'discovery_duration', 5)
+@Property('_discovery_duration', 'discovery_duration', 8)
 @Property('_filter', 'filter', ['PYBOARD'])
 @Instantiate('herald-bluetooth-discovery-test')
 class Discovery:
@@ -67,10 +66,9 @@ class Discovery:
         self._lock = None           # for mutex
         self._devices_names = None  # map: MAC -> name
         self._add_listeners = None  # callbacks when a new peer appears
-        self._del_listeners = None  # callbacks when a peer disappears
+        self._active = None         # thread state
 
         # properties
-        self._interval = None
         self._filter = None
         self._discovery_duration = None
 
@@ -82,11 +80,10 @@ class Discovery:
         :return: nothing
         """
         self._add_listeners = []
-        self._del_listeners = []
         self._devices_names = dict()
         self._lock = threading.Lock()
-        self._thread = herald.utils.LoopTimer(self._interval,
-                                              self._search_devices)
+        self._active = True
+        self._thread = threading.Thread(target=self._search_devices, args=())
         self._thread.start()
 
     @Invalidate
@@ -96,6 +93,7 @@ class Discovery:
         :param _: context
         :return: nothing
         """
+        self._active = False
         self._thread.cancel()
 
     def listen_new(self, f):
@@ -106,26 +104,14 @@ class Discovery:
         """
         self._add_listeners.append(f)
 
-    def listen_del(self, f):
-        """
-        add a listener for deleted elements in
-        the bluetooth network
-        :param f: callback with a mac parameter
-        :return: nothing
-        """
-        self._del_listeners.append(f)
-
     def _check_differences(self, old, new):
         """
         checks differences between old and new neighbourhood.
-        launch listener call if some peers showed up or disappeared
+        launch listener call if some peers showed up
         :param old: old peer set
         :param new: new peer set
         :return: nothing
         """
-        for i in old.difference(new):
-            for f in self._del_listeners:
-                f(i)
         for i in new.difference(old):
             for f in self._add_listeners:
                 f(i)
@@ -135,19 +121,21 @@ class Discovery:
         update attributes with the different bluetooth pairs known in the
         neighbourhood
         """
-        try:
-            devices = bluetooth.discover_devices(
-                duration=self._discovery_duration,
-                lookup_names=True)
-            with self._lock:
-                old = self._devices_names
+        while self._active:
+            try:
+                print('searching devices...')
+                devices = bluetooth.discover_devices(
+                    duration=self._discovery_duration,
+                    lookup_names=True)
+                with self._lock:
+                    old = self._devices_names
+                    self._devices_names = dict()
+                    for i in devices:
+                        if i[1] in self._filter:
+                            self._devices_names[i[0]] = i[1]
+                    self._check_differences(set(old), set(self._devices_names))
+            except bluetooth.btcommon.BluetoothError:
                 self._devices_names = dict()
-                for i in devices:
-                    if i[1] in self._filter:
-                        self._devices_names[i[0]] = i[1]
-                self._check_differences(set(old), set(self._devices_names))
-        except bluetooth.btcommon.BluetoothError:
-            self._devices_names = dict()
 
     def devices_set(self):
         """
