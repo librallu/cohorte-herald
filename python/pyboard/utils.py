@@ -26,18 +26,10 @@ Herald HTTP transport implementation
     limitations under the License.
 """
 
-# Module version
-__version_info__ = (0, 0, 3)
-__version__ = ".".join(str(x) for x in __version_info__)
-
-# Documentation strings format
-__docformat__ = "restructuredtext en"
-
-# ------------------------------------------------------------------------------
-
 import ujson as json
 
 import herald
+import beans
 
 def json_converter(obj):
     """
@@ -55,11 +47,11 @@ def to_json(msg):
     result = {}
 
     # headers
-    result[herald.MESSAGE_HEADERS] = {}        
+    result[herald.MESSAGE_HEADERS] = {}
     if msg.headers is not None:
         for key in msg.headers:
-            result[herald.MESSAGE_HEADERS][key] = msg.headers.get(key) or None        
-    
+            result[herald.MESSAGE_HEADERS][key] = msg.headers.get(key) or None
+
     # subject
     result[herald.MESSAGE_SUBJECT] = msg.subject
     # content
@@ -69,13 +61,13 @@ def to_json(msg):
             result[herald.MESSAGE_CONTENT] = msg.content
         else:
             result[herald.MESSAGE_CONTENT] = 'ERROR extracting content'
-    
+
     # metadata
-    result[herald.MESSAGE_METADATA] = {}        
+    result[herald.MESSAGE_METADATA] = {}
     if msg.metadata is not None:
         for key in msg.metadata:
             result[herald.MESSAGE_METADATA][key] = msg.metadata.get(key) or None
-            
+
     return json.dumps(result, default=herald.utils.json_converter)
 
 
@@ -84,9 +76,9 @@ def from_json(json_string):
     Returns a new MessageReceived from the provided json_string string
     """
     # parse the provided json_message
-    try:            
-        parsed_msg = json.loads(json_string)            
-    except ValueError as ex:            
+    try:
+        parsed_msg = json.loads(json_string)
+    except ValueError as ex:
         # if the provided json_message is not a valid JSON
         return None
     except TypeError as ex:
@@ -96,36 +88,41 @@ def from_json(json_string):
     # check if it is a valid Herald JSON message
     if herald.MESSAGE_HEADERS in parsed_msg:
         if herald.MESSAGE_HERALD_VERSION in parsed_msg[herald.MESSAGE_HEADERS]:
-            herald_version = parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HERALD_VERSION)                         
+            herald_version = parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HERALD_VERSION)
     if herald_version is None or herald_version != herald.HERALD_SPECIFICATION_VERSION:
         print("Herald specification of the received message is not supported!")
-        return None   
-    # construct new Message object from the provided JSON object    
-    msg = herald.beans.MessageReceived(uid=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_UID) or None), 
-                          subject=parsed_msg[herald.MESSAGE_SUBJECT], 
-                          content=None, 
-                          sender_uid=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_SENDER_UID) or None), 
-                          reply_to=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_REPLIES_TO) or None), 
+        return None
+    # construct new Message object from the provided JSON object
+    msg = beans.MessageReceived(uid=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_UID) or None),
+                          subject=parsed_msg[herald.MESSAGE_SUBJECT],
+                          content=None,
+                          sender_uid=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_SENDER_UID) or None),
+                          reply_to=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_REPLIES_TO) or None),
                           access=None,
-                          timestamp=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_TIMESTAMP) or None) 
-                          )                           
+                          timestamp=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_TIMESTAMP) or None)
+                          )
     # set content
-    try:
-        if herald.MESSAGE_CONTENT in parsed_msg:
-            parsed_content = parsed_msg[herald.MESSAGE_CONTENT]                              
-            if parsed_content is not None:
-                if isinstance(parsed_content, str):
-                    msg.set_content(parsed_content)
-                else:
-                    print('error')
-                    raise Exception('internal error')
-    except KeyError as ex:
-        print('internal error 2')
+    # try:
+    if herald.MESSAGE_CONTENT in parsed_msg:
+        parsed_content = parsed_msg[herald.MESSAGE_CONTENT]
+        if parsed_content is not None:
+            if isinstance(parsed_content, str):
+                msg.set_content(parsed_content)
+            elif isinstance(parsed_content, dict):
+                # msg.set_content(parsed_content['uid'])
+                msg.set_sender(parsed_content['map']['uid'])
+            else:
+                # msg.set_content(jabsorb.from_jabsorb(parsed_content))
+                print('error')
+                print(type(parsed_content))
+                raise Exception('internal error')
+    # except KeyError as ex:
+    #     print('internal error 2')
     # other headers
     if herald.MESSAGE_HEADERS in parsed_msg:
         for key in parsed_msg[herald.MESSAGE_HEADERS]:
             if key not in msg._headers:
-                msg._headers[key] = parsed_msg[herald.MESSAGE_HEADERS][key]         
+                msg._headers[key] = parsed_msg[herald.MESSAGE_HEADERS][key]
     # metadata
     if herald.MESSAGE_METADATA in parsed_msg:
         for key in parsed_msg[herald.MESSAGE_METADATA]:
