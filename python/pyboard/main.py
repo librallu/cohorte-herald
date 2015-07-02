@@ -54,6 +54,23 @@ uart = pyb.UART(1, 38400)
 #         pyb.Pin(led_pin, pyb.Pin.OUT_PP).low()
 #         print("LED OFF")
 
+def set_led(value):
+    """
+    set the led to a given value
+    :param value: True for ON, False for OFF
+    :return: None
+    """
+    if value:
+        pyb.Pin(led_pin, pyb.Pin.OUT_PP).high()
+    else:
+        pyb.Pin(led_pin, pyb.Pin.OUT_PP).low()
+
+def get_photo_value():
+    """
+    :return: photoresistor value as a string
+    """
+    return str(pyb.ADC(photo_pin).read())
+
 def to_string(msg):
     if type(msg) is bytes:
         msg = str(msg)
