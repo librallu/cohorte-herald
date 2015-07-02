@@ -108,11 +108,11 @@ class HttpTransport(object):
         :param _: context
         :return: nothing
         """
-        print('bluetooth transport starting')
+        # print('bluetooth transport starting')
         self._bluetooth.listen_new(self._when_added)
 
     def _when_added(self, mac):
-        print('BLUETOOTH: register peer with mac {}'.format(mac))
+        _logger.info('BLUETOOTH: register peer with mac {}'.format(mac))
         local_dump = self._directory.get_local_peer().dump()
         extra = {'mac': mac}
         try:
@@ -167,7 +167,7 @@ class HttpTransport(object):
         """
         # send the message via the bluetooth_manager
         message_string = utils.to_json(message)
-        print('bluetooth.transport._fire: about to fire {} to {}'.format(message_string, mac))
+        # print('bluetooth.transport._fire: about to fire {} to {}'.format(message_string, mac))
         self._bluetooth.fire(mac, message_string)
 
     def fire_group(self, group, peers, message):

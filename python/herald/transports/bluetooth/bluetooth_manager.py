@@ -42,7 +42,6 @@ from pelix.ipopo.decorators import ComponentFactory, \
     Validate, Invalidate, Instantiate, Provides, Requires
 import logging
 import herald.utils
-import herald.beans as beans
 from herald.transports.bluetooth.communication_set import CommunicationSet
 
 # ------------------------------------------------------------------------------
@@ -51,20 +50,27 @@ _logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------------------
 
+
 @ComponentFactory("herald-bluetooth_manager-factory")
 @Requires('_discovery', herald.transports.bluetooth.BLUETOOTH_DISCOVERY_SERVICE)
 @Requires('_directory', herald.SERVICE_DIRECTORY)
+@Requires('_herald', herald.SERVICE_HERALD_INTERNAL)  # for receiving messages
 @Provides(herald.transports.bluetooth.BLUETOOTH_MANAGER_SERVICE)
 @Instantiate('herald-bluetooth_manager-test')
 class BluetoothManager:
 
     def __init__(self):
         self._discovery = None
-
         self._coms = None
 
     def _when_added(self, mac):
-        self._coms.update_devices([mac])
+        if self._coms is not None:
+            self._coms.update_devices([mac])
+
+    def _register_herald(self, msg, _):
+        print('passing to herald :')
+        print(msg)
+        self._herald.hangle_message(msg)
 
     @Validate
     def validate(self, _):
@@ -77,6 +83,7 @@ class BluetoothManager:
         self._coms.register_leaving_callback(
             self._discovery.delete_mac
         )
+        self.register_callback(self._register_herald)
 
     @Invalidate
     def invalidate(self, _):

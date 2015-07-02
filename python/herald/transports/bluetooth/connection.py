@@ -31,12 +31,14 @@ import bluetooth
 import time
 import datetime
 from herald.transports.bluetooth.serial_automata import SerialAutomata
+import logging
 
 HELLO_MESSAGE = '[[[HELLO]]]'
 PORT = 1
 DELAY_BETWEEN_TRIES = 2
 TIMEOUT = 5
 
+_logger = logging.getLogger(__name__)
 
 def to_string(msg):
     if type(msg) is bytes:
@@ -105,21 +107,23 @@ class Connection:
             msg = self._receive_message()
             while msg is not None and msg != HELLO_MESSAGE:
                 msg = self._receive_message()
-            if msg is None:
-                print("connection aborted with pair {}".format(self._mac))
-                self._err_callback(self._mac)
-            else:
-                self._valid = True
-                # starting handle thread for new messages
-                self._loop_thread = threading.Thread(target=self._loop)
-                self._loop_thread.start()
-                self._alive_thread = threading.Thread(target=self._alive_loop)
-                self._alive_thread.start()
-                self._start_callback(self._mac)
+            # if msg is None:
+            #     print("connection aborted with pair {}".format(self._mac))
+            #     self._err_callback(self._mac)
+            #     _logger.info('{} disconnected: bluetooth exception'.format(self._mac))
+            # else:
+            self._valid = True
+            # starting handle thread for new messages
+            self._loop_thread = threading.Thread(target=self._loop)
+            self._loop_thread.start()
+            self._alive_thread = threading.Thread(target=self._alive_loop)
+            self._alive_thread.start()
+            self._start_callback(self._mac)
         except bluetooth.btcommon.BluetoothError:
             if self._err_callback is None:
                 pass
             else:
+                _logger.info('{} disconnected: bluetooth exception'.format(self._mac))
                 self._err_callback(self._mac)
 
     def _alive_loop(self):
@@ -134,6 +138,7 @@ class Connection:
             self.send_message(HELLO_MESSAGE)
             time.sleep(TIMEOUT)
             if self._last_hello_received < last_ask:
+                _logger.info('{} disconnected: timeout elapsed'.format(self._mac))
                 self._err_callback(self._mac)
 
     def _loop(self):
@@ -173,6 +178,8 @@ class Connection:
         """
         while not self._automata.any_message():
             try:
+                if not self._valid:
+                    return None  # for correctly terminating
                 recv = to_string(self._socket.recv(1))
             except bluetooth.btcommon.BluetoothError:
                 recv = ''
@@ -185,8 +192,7 @@ class Connection:
         print('msg received: {}'.format(msg))
         if to_string(HELLO_MESSAGE) == to_string(msg):
             self._last_hello_received = datetime.datetime.now()
-        else:
-            print('different: {}/{}'.format(to_string(HELLO_MESSAGE), to_string(msg)))
+            return None
         return msg
 
     def close(self):
