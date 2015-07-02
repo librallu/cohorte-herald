@@ -48,6 +48,12 @@ def to_string(msg):
     else:
         return msg
 
+class NotValid(Exception):
+    def _init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
 
 class Connection:
 
@@ -80,6 +86,7 @@ class Connection:
         self._msg_callback = msg_callback
         self._msg_handle_freq = msg_handle_freq
         self._valid = False
+        self._closed = False
         self._socket = None
         self._automata = SerialAutomata()
         self._loop_thread = None
@@ -104,21 +111,19 @@ class Connection:
             self.send_message(HELLO_MESSAGE, check_valid=False)
 
             # step 2 - wait a HELLO_MESSAGE
-            msg = self._receive_message()
-            while msg is not None and msg != HELLO_MESSAGE:
-                msg = self._receive_message()
-            # if msg is None:
-            #     print("connection aborted with pair {}".format(self._mac))
-            #     self._err_callback(self._mac)
-            #     _logger.info('{} disconnected: bluetooth exception'.format(self._mac))
-            # else:
-            self._valid = True
-            # starting handle thread for new messages
-            self._loop_thread = threading.Thread(target=self._loop)
-            self._loop_thread.start()
-            self._alive_thread = threading.Thread(target=self._alive_loop)
-            self._alive_thread.start()
-            self._start_callback(self._mac)
+            msg = self._receive_message(check_valid=False)
+            # if timeout elapsed
+            if msg == '':
+                print("connection aborted with pair {}".format(self._mac))
+                self.close()
+            else:
+                self._valid = True
+                # starting handle thread for new messages
+                self._loop_thread = threading.Thread(target=self._loop)
+                self._loop_thread.start()
+                self._alive_thread = threading.Thread(target=self._alive_loop)
+                self._alive_thread.start()
+                self._start_callback(self._mac)
         except bluetooth.btcommon.BluetoothError:
             if self._err_callback is None:
                 pass
@@ -149,10 +154,13 @@ class Connection:
         (msg_callback) when there is a new message.
         """
         while self._valid:
-            msg = self._receive_message(with_timeout=True)
-            if msg != '' and msg is not None:
-                # print('connection: message obtained:{}'.format(msg))
-                self._msg_callback(msg, self._mac)
+            try:
+                msg = self._receive_message(with_timeout=True)
+                if msg != '' and msg is not None:
+                    # print('connection: message obtained:{}'.format(msg))
+                    self._msg_callback(msg, self._mac)
+            except NotValid:
+                return
 
     def send_message(self, msg, check_valid=True):
         """
@@ -166,25 +174,27 @@ class Connection:
             pass
         self._socket.send(str(len(msg))+':'+msg)
 
-    def _receive_message(self, with_timeout=True):
+    def _receive_message(self, with_timeout=True, check_valid=True):
         """
         WARNING: This is a blocking call.
         So, for common uses, please use
         the callback mechanism available.
         :param with_timeout: if true, waits until
         the timeout before returning nothing.
+        :param check_valid: if True, raise NotValid
+        if the connection is not valid (is_valid()==False)
         :return: message read from the peer
             None if timeout passed
         """
         while not self._automata.any_message():
             try:
-                if not self._valid:
-                    return None  # for correctly terminating
+                if check_valid and not self._valid:
+                    raise NotValid('is_valid()=False')
                 recv = to_string(self._socket.recv(1))
             except bluetooth.btcommon.BluetoothError:
                 recv = ''
             if recv == '' and with_timeout:  # if timeout passed
-                return None
+                return ''
             if recv != '':
                 self._automata.read(recv)
                 # print('automata reads '+recv)
@@ -200,6 +210,7 @@ class Connection:
         Close the connection with the pair
         """
         self._valid = False
+        self._closed = True
         self._socket.close()
 
     def is_valid(self):
@@ -208,3 +219,10 @@ class Connection:
             false elsewhere
         """
         return self._valid
+
+    def is_closed(self):
+        """
+        :return: True if connection is closed
+        i.e. it is not used
+        """
+        return self._closed

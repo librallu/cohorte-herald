@@ -129,7 +129,7 @@ class CommunicationSet:
         """
         with self._lock:
             for i in self._callbacks:
-                print('{}:{}'.format(msg,mac))
+                print('{}:{}'.format(msg, mac))
                 i(msg, mac)
 
     def update_devices(self, mac_list):
@@ -139,7 +139,9 @@ class CommunicationSet:
         """
         # if a device needs to be added
         for i in mac_list:
-            if i not in self._connections:
+            cond = i not in self._connections
+            cond = cond or self._connections[i].is_closed()
+            if cond:
                 print("set: creating connection with: {}".format(i))
                 self._connections[i] = Connection(
                     i,
