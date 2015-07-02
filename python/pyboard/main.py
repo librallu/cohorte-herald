@@ -27,6 +27,7 @@ Main application on PyBoard
 # automata import
 import automata
 from utils import to_json, from_json
+import time
 
 # pins declarations
 photo_pin = 'X12'
@@ -124,8 +125,51 @@ def display_message(bean):
         print('content:'+bean.content)
     print('='*20)
 
+def get_step2_response(msg, uid, mac):
+    return """
+{
+   "headers":{
+      "herald-version":1,
+      "sender-uid":"{}",
+      "timestamp":{},
+      "target-peer":"{}",
+      "uid":"{}",
+      "replies-to":"{}"
+   },
+   "subject":"herald/directory/discovery/step2",
+   "content":{
+      "javaClass":"java.util.HashMap",
+      "map":{
+         "node_name":"{}",
+         "accesses":{
+            "javaClass":"java.util.HashMap",
+            "map":{
+               "bluetooth":[
+                    {}
+               ]
+            }
+         },
+         "groups":{
+            "javaClass":"java.util.HashSet",
+            "set":[
 
-def manage_message(msg, uid):
+            ]
+         },
+         "node_uid":"{}",
+         "uid":"{}",
+         "app_id":"<herald-legacy>",
+         "name":"{}"
+      }
+   },
+   "metadata":{
+
+   }
+}
+""".format(uid, int(time.time() * 1000), msg.sender, uid,
+           msg.sender, uid, mac, uid, uid, uid)
+
+
+def manage_message(msg, uid, mac):
     """
     Extract useful information in the message
     and do something if necessary
@@ -139,6 +183,8 @@ def manage_message(msg, uid):
     display_message(bean)
     if bean.subject == 'herald/directory/discovery/step1':
         print('** SENDING STEP 2 MESSAGE **')
+        put_message(get_step2_response(msg, uid, mac))
+
 
 # ---------- MAIN LOOP ------------
 
@@ -167,8 +213,9 @@ def gen_node_uid():
     return res
 
 uid = gen_node_uid()
+mac = '20:14:03:19:88:23'
 
 while True:
     msg = get_message()
     if msg:
-        manage_message(msg, uid)
+        manage_message(msg, uid, mac)
