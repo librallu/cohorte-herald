@@ -261,6 +261,8 @@ class HeraldServlet(object):
         sender_uid = None
         
         raw_content = to_unicode(request.read_data())
+        # print(raw_content)
+        # print('='*20)
         
         # Client information
         host = utils.normalize_ip(request.get_client_address()[0])
