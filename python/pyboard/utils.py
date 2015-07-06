@@ -93,13 +93,13 @@ def from_json(json_string):
         print("Herald specification of the received message is not supported!")
         return None
     # construct new Message object from the provided JSON object
-    msg = beans.MessageReceived(uid=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_UID) or None),
+    msg = beans.MessageReceived(uid=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_UID) or ''),
                           subject=parsed_msg[herald.MESSAGE_SUBJECT],
-                          content=None,
-                          sender_uid=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_SENDER_UID) or None),
-                          reply_to=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_REPLIES_TO) or None),
-                          access=None,
-                          timestamp=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_TIMESTAMP) or None)
+                          content='',
+                          sender_uid=(parsed_msg['headers']['original_sender'] or ''),
+                          reply_to=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_REPLIES_TO) or ''),
+                          access='',
+                          timestamp=(parsed_msg[herald.MESSAGE_HEADERS].get(herald.MESSAGE_HEADER_TIMESTAMP) or '')
                           )
     # set content
     # try:
@@ -109,8 +109,10 @@ def from_json(json_string):
             if isinstance(parsed_content, str):
                 msg.set_content(parsed_content)
             elif isinstance(parsed_content, dict):
+                pass
                 # msg.set_content(parsed_content['uid'])
-                msg.set_sender(parsed_content['map']['uid'])
+                # msg.set_sender(parsed_content['headers']['original_sender'])
+                # msg.set_sender(parsed_msg[herald.MESSAGE_HEADERS].get('original_sender'))
             else:
                 # msg.set_content(jabsorb.from_jabsorb(parsed_content))
                 print('error')
@@ -128,5 +130,5 @@ def from_json(json_string):
         for key in parsed_msg[herald.MESSAGE_METADATA]:
             if key not in msg._metadata:
                 msg._metadata[key] = parsed_msg[herald.MESSAGE_METADATA][key] 
-                       
+    # msg.set_sender(parsed_msg['headers']['original_sender'])
     return msg

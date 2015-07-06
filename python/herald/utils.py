@@ -102,8 +102,10 @@ def from_json(json_string):
         parsed_msg = json.loads(json_string)            
     except ValueError as ex:            
         # if the provided json_message is not a valid JSON
+        _logger.error('ValueError')
         return None
     except TypeError as ex:
+        _logger.error('TypeError')
         # if json_message not string or buffer
         return None
     herald_version = None

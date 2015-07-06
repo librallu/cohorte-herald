@@ -84,8 +84,8 @@ def put_message(msg):
     :return: None
     """
     msg = to_string(msg)
-    print("sending:")
-    print(str(len(msg))+DELIMITER+msg)
+    # print("sending:")
+    # print(str(len(msg))+DELIMITER+msg)
     uart.write(str(len(msg))+DELIMITER+msg)
 
 
@@ -125,27 +125,40 @@ def display_message(bean):
         print('content:'+bean.content)
     print('='*20)
 
-def get_step2_response(msg, uid, mac):
-    return """
+
+def compress_msg(msg):
+    """
+    removes new lines, tabs and spaces in a message
+    :param msg: message to be compressed
+    :return: new message (compressed)
+    """
+    msg = msg.replace('\n', '')
+    msg = msg.replace('\t', '')
+    msg = msg.replace(' ', '')
+
+
+def get_step2_response(bean, uid, mac):
+    sender = bean.sender
+    msg = '''
 {
    "headers":{
       "herald-version":1,
-      "sender-uid":"{}",
-      "timestamp":{},
-      "target-peer":"{}",
-      "uid":"{}",
-      "replies-to":"{}"
+      "sender-uid":"'''+uid+'''",
+      "timestamp":'''+str(int(time.time() * 1000))+''',
+      "target-peer":"'''+sender+'''",
+      "uid":"'''+uid+'''",
+      "replies-to":"'''+sender+'''"
    },
    "subject":"herald/directory/discovery/step2",
    "content":{
       "javaClass":"java.util.HashMap",
       "map":{
-         "node_name":"{}",
+         "node_name":"'''+uid+'''",
          "accesses":{
             "javaClass":"java.util.HashMap",
             "map":{
                "bluetooth":[
-                    {}
+                    "'''+mac+'''"
                ]
             }
          },
@@ -155,18 +168,19 @@ def get_step2_response(msg, uid, mac):
 
             ]
          },
-         "node_uid":"{}",
-         "uid":"{}",
+         "node_uid":"'''+uid+'''",
+         "uid":"'''+uid+'''",
          "app_id":"<herald-legacy>",
-         "name":"{}"
+         "name":"'''+uid+'''"
       }
    },
    "metadata":{
 
    }
 }
-""".format(uid, int(time.time() * 1000), msg.sender, uid,
-           msg.sender, uid, mac, uid, uid, uid)
+'''
+    msg = compress_msg(msg)
+    return msg
 
 
 def manage_message(msg, uid, mac):
@@ -183,7 +197,7 @@ def manage_message(msg, uid, mac):
     display_message(bean)
     if bean.subject == 'herald/directory/discovery/step1':
         print('** SENDING STEP 2 MESSAGE **')
-        put_message(get_step2_response(msg, uid, mac))
+        put_message(get_step2_response(bean, uid, mac))
 
 
 # ---------- MAIN LOOP ------------

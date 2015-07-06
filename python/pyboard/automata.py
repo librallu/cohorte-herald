@@ -95,7 +95,10 @@ class SerialAutomata:
             elif char == self._delimiter_char:
                 self._remaining = self.int_from_numbers(self._number_list)
                 self._number_list = []
-                self._is_reading_number = False
+                if self._remaining > 0:
+                    self._is_reading_number = False
+                else:
+                    self._previous_messages.append('')
             else:
                 print('SERIAL AUTOMATA: bad data ignoring char {}'.format(char))
         else:  # if we are reading a message
