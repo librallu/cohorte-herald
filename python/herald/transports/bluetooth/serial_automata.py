@@ -66,7 +66,7 @@ class SerialAutomata:
             self._read_char(i)
 
     @staticmethod
-    def int_from_numbers(list):
+    def int_from_numbers(l):
         """
         :param list: list of numbers
         :return: integer value of a list of numbers in a reverse order
@@ -77,12 +77,12 @@ class SerialAutomata:
         >>> SerialAutomata.int_from_numbers([1,2,3])
         321
         """
-        if list is None:
+        if not l:
             return 0
-        elif len(list) == 1:
-            return list[0]
+        elif len(l) == 1:
+            return l[0]
         else:
-            return list[0]+10*SerialAutomata.int_from_numbers(list[1:])
+            return l[0]+10*SerialAutomata.int_from_numbers(l[1:])
 
     def _read_char(self, char):
         """

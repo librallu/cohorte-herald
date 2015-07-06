@@ -104,7 +104,7 @@ class BluetoothDirectory(object):
         :param data: The peer access data, previously loaded with load_access()
         """
         if peer.uid != self._directory.local_uid:
-            self._uid_address[peer.uid] = data.address
+            self._uid_address[peer.uid] = data.mac
 
     def peer_access_unset(self, peer, data):
         """

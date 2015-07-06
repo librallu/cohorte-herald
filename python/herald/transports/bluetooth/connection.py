@@ -35,8 +35,8 @@ import logging
 
 HELLO_MESSAGE = '[[[HELLO]]]'
 PORT = 1
-DELAY_BETWEEN_TRIES = 2
-TIMEOUT = 5
+DELAY_BETWEEN_TRIES = 10
+TIMEOUT = 30
 
 _logger = logging.getLogger(__name__)
 
@@ -141,8 +141,8 @@ class Connection:
             last_ask = datetime.datetime.now()
             time.sleep(DELAY_BETWEEN_TRIES)
             self.send_message(HELLO_MESSAGE)
-            time.sleep(TIMEOUT)
-            if self._last_hello_received < last_ask:
+            # time.sleep(TIMEOUT)
+            if self._last_hello_received < last_ask-datetime.timedelta(seconds=TIMEOUT):
                 _logger.info('{} disconnected: timeout elapsed'.format(self._mac))
                 self._err_callback(self._mac)
 

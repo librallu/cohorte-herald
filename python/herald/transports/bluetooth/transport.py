@@ -166,6 +166,11 @@ class HttpTransport(object):
         :return: nothing
         """
         # send the message via the bluetooth_manager
+
+        # add original sender header if there is no one
+        if not message.get_header('original_sender'):
+            message.add_header('original_sender', self._directory.local_uid)
+
         message_string = utils.to_json(message)
         # print('bluetooth.transport._fire: about to fire {} to {}'.format(message_string, mac))
         self._bluetooth.fire(mac, message_string)
