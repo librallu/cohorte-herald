@@ -27,6 +27,7 @@ Herald Bluetooth Message Implementation
 """
 
 DELIMITER = ':'
+HELLO_MESSAGE = b'[[[HELLO]]]'
 
 
 def to_string(msg):
@@ -53,7 +54,7 @@ def to_bluetooth_message(msg):
     :return: bluetooth message as a string
     """
     msg = to_string(msg)
-    return str(len(msg))+DELIMITER+msg
+    return str(len(msg)) + DELIMITER + msg
 
 
 class MessageReader:
@@ -61,14 +62,24 @@ class MessageReader:
     reads herald message from bluetooth messages
     """
 
-    def __init__(self, automata):
+    def __init__(self, automata, hello_callback=None):
         self._automata = automata
         self._buffer = []
+        self._hello_received_callback = hello_callback
 
     def read(self):
         if self._automata.any_message():
             msg = self._automata.get_message()
-            print(self._buffer)
+            # if there is a hello message
+            if len(self._buffer) == 0:
+                # if we are not into reading a new herald message
+                if to_string(msg) == to_string(HELLO_MESSAGE):
+                    # call the hello received callback
+                    if self._hello_received_callback:
+                        self._hello_received_callback()
+                    # exiting before continuing in the
+                    # creation of an herald message
+                    return None
             self._buffer.append(msg)
             if len(self._buffer) >= 7:
                 res = SerialHeraldMessage(*self._buffer)
