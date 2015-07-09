@@ -484,6 +484,7 @@ class HeraldDirectory(object):
         :raise ValueError: Invalid peer UID
         """
         with self.__lock:
+            print(description)
             uid = description['uid']
             if uid == self._local.uid:
                 # Ignore local peer

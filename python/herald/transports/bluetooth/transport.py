@@ -171,9 +171,9 @@ class HttpTransport(object):
         if not message.get_header('original_sender'):
             message.add_header('original_sender', self._directory.local_uid)
 
-        message_string = utils.to_json(message)
+        # message_string = utils.to_json(message)
         # print('bluetooth.transport._fire: about to fire {} to {}'.format(message_string, mac))
-        self._bluetooth.fire(mac, message_string)
+        self._bluetooth.fire(mac, message)
 
     def fire_group(self, group, peers, message):
         """

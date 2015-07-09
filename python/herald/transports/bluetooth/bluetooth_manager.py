@@ -44,9 +44,11 @@ import logging
 import herald.utils
 from herald.transports.bluetooth.communication_set import CommunicationSet
 import herald.transports.peer_contact as peer_contact
+from herald.transports.bluetooth.serial_herald_message import *
 
 from . import ACCESS_ID
 from . import beans
+from herald.beans import Message, MessageReceived
 
 # ------------------------------------------------------------------------------
 
@@ -67,31 +69,67 @@ class BluetoothManager:
         self._discovery = None
         self._coms = None
         self.__contact = None
-        self._discovery = None
+        self._directory = None
         self._herald = None
+
+    def herald_to_bluetooth(self, bean):
+        return SerialHeraldMessage(
+            subject=bean.subject,
+            sender_uid=self._directory.local_uid,
+            original_sender=bean.headers['original_sender'],
+            final_destination=bean.headers.get('final_destination') or '',
+            content=str(bean.content),
+            reply_to='',
+            message_uid=bean.uid
+        )
+
+    @staticmethod
+    def bluetooth_to_herald(msg):
+        if msg.reply_to:
+            res = MessageReceived(
+                uid=msg.message_uid,
+                subject=msg.subject,
+                content=msg.content,
+                sender_uid=msg.sender_uid,
+                reply_to=msg.reply_to,
+                access=ACCESS_ID
+            )
+            res.add_header(herald.MESSAGE_HEADER_REPLIES_TO, msg.reply_to)
+            return res
+        else:
+            res = Message(
+                subject=msg.subject,
+                content=msg.content
+            )
+            res.add_header(herald.MESSAGE_HEADER_SENDER_UID, msg.sender_uid)
+            res.add_header(herald.MESSAGE_HEADER_UID, msg.message_uid)
+            res.add_header("original_sender", msg.original_sender)
+            if msg.final_destination:
+                res.add_header("final_destination", msg.final_destination)
+            return res
 
     def _when_added(self, mac):
         if self._coms is not None:
             self._coms.update_devices([mac])
 
-    def _register_herald(self, msg, _):
+    def _register_herald(self, msg, mac):
         # extracting string before to pass it
         # to the rest of the system
         # try:
-        print('\n\npassing to herald :\n\n')
-        print(msg)
-        received_msg = herald.utils.from_json(msg)
+        received_msg = self.bluetooth_to_herald(msg)
+        # received_msg = herald.utils.from_json(msg)
 
         # prepare bean
-        sender_uid = received_msg.sender
-        received_msg.add_header(herald.MESSAGE_HEADER_SENDER_UID, sender_uid)
-        received_msg.set_access(ACCESS_ID)
-        extra = {ACCESS_ID: received_msg.content['accesses']['bluetooth']}
+        # sender_uid = received_msg.sender
+        # received_msg.add_header(herald.MESSAGE_HEADER_SENDER_UID, sender_uid)
+        # received_msg.set_access(ACCESS_ID)
+        extra = {ACCESS_ID: mac}
         received_msg.set_extra(extra)
 
         # if the message is a discovery message
         if received_msg.subject.startswith(peer_contact.SUBJECT_DISCOVERY_PREFIX):
             # Handle discovery message
+            received_msg.set_content(eval(received_msg.content))
             self.__contact.herald_message(self._herald, received_msg)
         else:
             self._herald.handle_message(received_msg)
@@ -105,13 +143,12 @@ class BluetoothManager:
         :param description: The parsed remote peer description
         :return: The peer dump map
         """
-        # print('message.access:{} ACCESS_ID:{}'.format(message.access, ACCESS_ID))
         if message.access == ACCESS_ID:
-            # Forge the access to the HTTP server using extra information
+            # Forge the access using extra information
             extra = message.extra
             description['accesses'][ACCESS_ID] = \
-                beans.BluetoothAccess(extra[ACCESS_ID]).dump()
-            print(description)
+                [beans.BluetoothAccess(extra[ACCESS_ID]).dump()]
+            print('description: {}'.format(description))
         return description
 
     @Validate
@@ -164,7 +201,8 @@ class BluetoothManager:
         if not self._coms.has_connection(mac):
             return False
         print('*'*30)
-        self._coms.send_to(mac, message)
+        self._coms.send_to(mac,
+                           self.herald_to_bluetooth(message).to_automata_string())
         return True
 
     def register_callback(self, f):

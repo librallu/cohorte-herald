@@ -68,7 +68,7 @@ class SerialAutomata:
     @staticmethod
     def int_from_numbers(l):
         """
-        :param list: list of numbers
+        :param l: list of numbers
         :return: integer value of a list of numbers in a reverse order
 
         >>> SerialAutomata.int_from_numbers([])
@@ -91,11 +91,14 @@ class SerialAutomata:
         """
         if self._is_reading_number:
             if ord('0') <= ord(char) <= ord('9'):
-                self._number_list.insert(0,ord(char)-ord('0'))
+                self._number_list.insert(0, ord(char)-ord('0'))
             elif char == self._delimiter_char:
                 self._remaining = self.int_from_numbers(self._number_list)
                 self._number_list = []
-                self._is_reading_number = False
+                if self._remaining > 0:
+                    self._is_reading_number = False
+                else:
+                    self._previous_messages.append('')
             else:
                 print('SERIAL AUTOMATA: bad data ignoring char {}'.format(char))
         else:  # if we are reading a message

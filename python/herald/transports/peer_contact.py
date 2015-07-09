@@ -85,7 +85,7 @@ class PeerContact(object):
                     # Use the new description
                     dump = updated_dump
             except (TypeError, ValueError) as ex:
-                self._logger("Invalid description hook: %s", ex)
+                self._logger.error("Invalid description hook: %s", ex)
         return dump
 
     def clear(self):

@@ -33,20 +33,13 @@ import datetime
 from herald.transports.bluetooth.serial_automata import SerialAutomata
 import logging
 
-HELLO_MESSAGE = '[[[HELLO]]]'
+from herald.transports.bluetooth.serial_herald_message import \
+    HELLO_MESSAGE, to_string, to_bluetooth_message, MessageReader
 PORT = 1
 DELAY_BETWEEN_TRIES = 10
 TIMEOUT = 30
 
 _logger = logging.getLogger(__name__)
-
-def to_string(msg):
-    if type(msg) is bytes:
-        msg = str(msg)
-        msg = msg[2:]
-        return msg[:-1]
-    else:
-        return msg
 
 class NotValid(Exception):
     def _init__(self, value):
@@ -58,7 +51,7 @@ class NotValid(Exception):
 class Connection:
 
     def __init__(self, mac, msg_callback,
-                 msg_handle_freq=1, timeout=2,
+                 msg_handle_freq=1, timeout=3,
                  err_callback=None, start_callback=None):
         """
         constructor of a connection.
@@ -89,11 +82,16 @@ class Connection:
         self._closed = False
         self._socket = None
         self._automata = SerialAutomata()
+        self._reader = None
         self._loop_thread = None
         self._init_thread = threading.Thread(target=self._init_connection)
         self._init_thread.start()
         self._alive_thread = None
         self._last_hello_received = None
+
+    def _handle_hello(self):
+        print('hello handled')
+        self._last_hello_received = datetime.datetime.now()
 
     def _init_connection(self):
         """
@@ -106,23 +104,29 @@ class Connection:
             self._socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
             self._socket.connect((self._mac, PORT))
             self._socket.settimeout(self._timeout)
-
+            print('sending message 1')
             # step 1 - send a HELLO_MESSAGE
-            self.send_message(HELLO_MESSAGE, check_valid=False)
-
+            self.send_message(HELLO_MESSAGE, check_valid=False, encapsulate=True)
+            print('receiving message 2')
             # step 2 - wait a HELLO_MESSAGE
             msg = self._receive_message(check_valid=False)
+            # if msg is None, connection is OK
+            # if msg is '', the pair didn't respond
+
             # if timeout elapsed
+            print('message 2 received {}'.format(msg))
             if msg == '':
                 print("connection aborted with pair {}".format(self._mac))
                 self.close()
             else:
                 self._valid = True
                 # starting handle thread for new messages
+                self._reader = MessageReader(self._automata, self._handle_hello)
                 self._loop_thread = threading.Thread(target=self._loop)
                 self._loop_thread.start()
                 self._alive_thread = threading.Thread(target=self._alive_loop)
                 self._alive_thread.start()
+
                 self._start_callback(self._mac)
         except bluetooth.btcommon.BluetoothError:
             if self._err_callback is None:
@@ -140,9 +144,9 @@ class Connection:
         while self._valid:
             last_ask = datetime.datetime.now()
             time.sleep(DELAY_BETWEEN_TRIES)
-            self.send_message(HELLO_MESSAGE)
+            self.send_message(HELLO_MESSAGE, encapsulate=True)
             # time.sleep(TIMEOUT)
-            if self._last_hello_received < last_ask-datetime.timedelta(seconds=TIMEOUT):
+            if self._last_hello_received < last_ask - datetime.timedelta(seconds=TIMEOUT):
                 _logger.info('{} disconnected: timeout elapsed'.format(self._mac))
                 self._err_callback(self._mac)
 
@@ -154,25 +158,34 @@ class Connection:
         (msg_callback) when there is a new message.
         """
         while self._valid:
+            # add content in the automata
             try:
-                msg = self._receive_message(with_timeout=True)
-                if msg != '' and msg is not None:
-                    # print('connection: message obtained:{}'.format(msg))
-                    self._msg_callback(msg, self._mac)
-            except NotValid:
-                return
+                recv = to_string(self._socket.recv(1))
+            except bluetooth.btcommon.BluetoothError:
+                recv = ''
+            self._automata.read(recv)
+            msg = self._reader.read()
+            # msg = self._receive_message(with_timeout=True)
+            if msg != '' and msg is not None:
+                # print('connection: message obtained:{}'.format(msg))
+                self._msg_callback(msg, self._mac)
 
-    def send_message(self, msg, check_valid=True):
+    def send_message(self, msg, check_valid=True, encapsulate=False):
         """
         Sends message msg to the peer
         :param msg: message to send
         :param check_valid: if true, wait to the connection
+        :param encapsulate: if true, encapsulate for bluetooth transmission
+            False by default
         to be valid.
         """
         # wait for the communication
         while check_valid and not self._valid:
             pass
-        self._socket.send(str(len(msg))+':'+msg)
+        if encapsulate:
+            self._socket.send(to_bluetooth_message(msg))
+        else:
+            self._socket.send(msg)
 
     def _receive_message(self, with_timeout=True, check_valid=True):
         """
@@ -197,11 +210,10 @@ class Connection:
                 return ''
             if recv != '':
                 self._automata.read(recv)
-                # print('automata reads '+recv)
         msg = self._automata.get_message()
         print('msg received: {}'.format(msg))
         if to_string(HELLO_MESSAGE) == to_string(msg):
-            self._last_hello_received = datetime.datetime.now()
+            self._handle_hello()
             return None
         return msg
 
