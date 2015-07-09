@@ -1,0 +1,193 @@
+"""
+Main application on PyBoard
+
+:author: Luc Libralesso
+:copyright: Copyright 2014, isandlaTech
+:license: Apache License 2.0
+:version: 0.0.3
+:status: Alpha
+
+..
+
+    Copyright 2014 isandlaTech
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+"""
+
+# automata import
+import automata
+from serial_herald_message import *
+import pyb
+
+# pins declarations
+photo_pin = 'X12'
+led_pin = 'X11'
+
+
+# bluetooth connection initialization
+uart = pyb.UART(1, 38400)
+
+def get_message_uart():
+    """
+    :return: new message as a string from uart, None if
+    there are no new messages
+    """
+    if uart.any():
+        msg = to_string(uart.read())
+        print(msg)
+        return msg
+    return None
+
+
+def gen_node_uid():
+    """
+    :return: string representing the node UID of the pyboard
+    Format like "f07569ba-77ab-4f01-a041-c86c6b58c3cd"
+    """
+
+    def gen_rand_hexa():
+        return hex(pyb.rng() % 16)[2:]
+
+    res = ''
+    for i in range(0, 8):
+        res += gen_rand_hexa()
+    res += '-'
+    for j in range(0, 3):
+        for i in range(0, 4):
+            res += gen_rand_hexa()
+        res += '-'
+    for i in range(0, 12):
+        res += gen_rand_hexa()
+    return res
+
+
+# define node uid for the pyboard
+uid = gen_node_uid()
+# use mac address of the bluetooth module (fixed)
+mac = '20:14:03:19:88:23'
+# automata for reading bluetooth flow
+automata = automata.SerialAutomata()
+
+
+def set_led(value):
+    """
+    set the led to a given value
+    :param value: True for ON, False for OFF
+    :return: None
+    """
+    if value:
+        pyb.Pin(led_pin, pyb.Pin.OUT_PP).high()
+    else:
+        pyb.Pin(led_pin, pyb.Pin.OUT_PP).low()
+
+
+def get_photo_value():
+    """
+    :return: photoreceptor value as a string
+    """
+    return str(pyb.ADC(photo_pin).read())
+
+
+def put_message(message, encapsulate=True):
+    """
+    put a bluetooth message to the peer.
+    It doesn't add delimiters because
+    it is supposed to be done by the
+    Reader object.
+    :param message: string message
+    :return: None
+    """
+    output = to_string(message)
+    if encapsulate:
+        output = str(len(message))+DELIMITER+to_string(message)
+    print('sending: {}'.format(output))
+    uart.write(output)
+
+
+def hello_callback():
+    """
+    called when a hello message appears.
+    It will simply send back a hello message
+    :return: Nothing
+    """
+    put_message(HELLO_MESSAGE)
+
+
+def compress_msg(message):
+    """
+    removes new lines, tabs and spaces in a message
+    :param message: message to be compressed
+    :return: new message (compressed)
+    """
+    message = message.replace('\n', '')
+    message = message.replace('\t', '')
+    message = message.replace(' ', '')
+    return message
+
+
+def get_step2_response(request):
+    """
+    :param request: SerialHeraldMessage object of the request
+    :return: step2 response (SerialHeraldMessage object)
+    """
+    content = '''
+    {
+        "accesses": {"bluetooth": " '''+mac+''' "},
+        "name": " '''+uid+''' ",
+        "node_name": " '''+uid+''' ",
+        "node_uid": " '''+uid+''' ",
+        "groups": {},
+        "app_id": "<herald-legacy>",
+        "uid": " '''+uid+''' ",
+    }
+    '''
+    content = compress_msg(content)
+
+    return SerialHeraldMessage(
+        subject='herald/directory/discovery/step2',
+        sender_uid=uid,
+        original_sender=uid,
+        final_destination=request.original_sender,
+        content=content,
+        reply_to=request.message_uid
+    ).to_automata_string()
+
+
+def manage_message(message):
+    """
+    Extract useful information in the message
+    and do something if necessary
+    :param message: message received
+    :return: Nothing
+    """
+    print('herald message received:')
+    print(message)
+    # bean is of type MessageReceived
+    if message.subject == 'herald/directory/discovery/step1':
+        print('** SENDING STEP 2 MESSAGE **')
+        put_message(get_step2_response(message), encapsulate=False)
+
+
+# ---------- MAIN LOOP ------------
+reader = MessageReader(automata, hello_callback)
+
+
+while True:
+    # get message from uart
+    new_message = get_message_uart()
+    if new_message:
+        automata.read(new_message)
+    # pass it to the message reader
+    msg = reader.read()
+    if msg:
+        manage_message(msg)

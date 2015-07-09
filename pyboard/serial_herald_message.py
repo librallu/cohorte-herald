@@ -26,6 +26,8 @@ Herald Bluetooth Message Implementation
     limitations under the License.
 """
 
+import pyb
+
 DELIMITER = ':'
 HELLO_MESSAGE = b'[[[HELLO]]]'
 
@@ -55,6 +57,16 @@ def to_bluetooth_message(msg):
     """
     msg = to_string(msg)
     return str(len(msg)) + DELIMITER + msg
+
+
+def gen_uuid():
+    """
+    :return uuid of a message 32 random hexadecimal chars
+    """
+    res = ''
+    for i in range(0,32):
+        res += hex(pyb.rng() % 16)[2:].upper()
+    return res
 
 
 class MessageReader:
@@ -101,13 +113,15 @@ class SerialHeraldMessage:
                  content,
                  reply_to='',
                  message_uid=''):
-        self._subject = subject
-        self._sender_uid = sender_uid
-        self._original_sender = original_sender
-        self._final_destination = final_destination
-        self._content = content
-        self._reply_to = reply_to
-        self._message_uid = message_uid
+        self._subject = to_string(subject)
+        self._sender_uid = to_string(sender_uid)
+        self._original_sender = to_string(original_sender)
+        self._final_destination = to_string(final_destination)
+        self._content = to_string(content)
+        self._reply_to = to_string(reply_to)
+        self._message_uid = to_string(message_uid)
+        if self._message_uid == '':
+            self._message_uid = gen_uuid()
 
     def to_automata_string(self):
         res = ''
