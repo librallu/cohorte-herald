@@ -119,6 +119,8 @@ class HeraldDiscovery(object):
         :return: An ImportEndpoint bean
         :raise KeyError: Incomplete dump
         """
+        # print("+"*25+endpoint_dict+"+"*25)
+        # print(type(endpoint_dict))
         return pelix.remote.beans.ImportEndpoint(
             endpoint_dict['uid'],
             endpoint_dict['peer'],
@@ -213,6 +215,8 @@ class HeraldDiscovery(object):
         elif kind == 'add':
             # New endpoint available on a known peer
             # => Register the new endpoints
+            if isinstance(message.content, str):
+                message.set_content(eval(message.content))
             self.__register_endpoints(message.sender, message.content)
         elif kind == 'remove':
             # The message only contains the UID of the endpoint

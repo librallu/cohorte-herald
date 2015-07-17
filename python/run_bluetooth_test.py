@@ -90,7 +90,12 @@ def main(http_port, peer_name, node_name, app_id):
          'pelix.remote.dispatcher',
          'pelix.remote.registry',
          'herald.remote.discovery',
-         'herald.remote.herald_xmlrpc',),
+         'herald.remote.herald_xmlrpc',
+
+         # foo service for testing rpc
+         'ping',
+
+         ),
         {herald.FWPROP_NODE_UID: node_name,
          herald.FWPROP_NODE_NAME: node_name,
          herald.FWPROP_PEER_NAME: peer_name,

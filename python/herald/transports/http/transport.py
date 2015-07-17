@@ -245,6 +245,11 @@ class HttpTransport(object):
         if extra is not None:
             parent_uid = extra.get('parent_uid')
 
+        print('='*20)
+        print(message)
+        print('-'*20)
+        print(message.content)
+
         # Try to read extra information
         url = self.__get_access(peer, extra)
         if not url:
