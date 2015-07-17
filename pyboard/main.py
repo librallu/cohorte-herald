@@ -29,6 +29,7 @@ import automata
 from serial_herald_message import *
 import pyb
 
+
 # pins declarations
 photo_pin = 'X12'
 led_pin = 'X11'
@@ -37,15 +38,16 @@ led_pin = 'X11'
 # bluetooth connection initialization
 uart = pyb.UART(1, 38400)
 
+
 def get_message_uart():
     """
     :return: new message as a string from uart, None if
     there are no new messages
     """
     if uart.any():
-        msg = to_string(uart.read())
-        print(msg)
-        return msg
+        message = to_string(uart.read())
+        print(message)
+        return message
     return None
 
 
@@ -163,6 +165,71 @@ def get_step2_response(request):
     ).to_automata_string()
 
 
+def get_step3_response(request):
+    """
+    :param request: SerialHeraldMessage object of the request
+    :return: step3 response (SerialHeraldMessage object)
+    """
+    content = '''
+    [
+        {
+            'specifications': ['python:/herald.pyboard.photo'],
+            'peer': ' '''+uid+''' ',
+            'configurations': ('herald-xmlrpc',),
+            'uid': ' '''+uid+''' ',
+            'properties': {
+                'herald.rpc.peer': ' '''+uid+''' ',
+                'endpoint.framework.uuid': ' '''+uid+''' ',
+                'herald.rpc.subject': 'herald/rpc/xmlrpc',
+                'objectClass': ['herald.pyboard.photo'],
+                'instance.name': 'pyboard-photo',
+                'service.imported': True,
+                'service.imported.configs': ('herald-xmlrpc',),
+                'endpoint.service.id': 42,
+                'service.ranking': 0
+            },
+            'name': 'service_42'}
+    ]
+    '''
+    content = compress_msg(content)
+
+    return SerialHeraldMessage(
+        subject='herald/rpc/discovery/add',
+        sender_uid=uid,
+        original_sender=uid,
+        final_destination=request.original_sender,
+        content=content,
+        reply_to=request.message_uid
+    ).to_automata_string()
+
+
+def get_rpc_answer(request):
+    """
+    :param request: SerialHeraldMessage object of the request
+    :return: xmlrpc response (SerialHeraldMessage object)
+    """
+    content = '''
+    <?xml version='1.0'?>
+        <methodResponse>
+        <params>
+            <param>
+                <value><int>78</int></value>
+            </param>
+        </params>
+    </methodResponse>
+    '''
+    content = compress_msg(content)
+
+    return SerialHeraldMessage(
+        subject='herald/rpc/xmlrpc/reply',
+        sender_uid=uid,
+        original_sender=uid,
+        final_destination=request.original_sender,
+        content=content,
+        reply_to=request.message_uid
+    ).to_automata_string()
+
+
 def manage_message(message):
     """
     Extract useful information in the message
@@ -176,7 +243,14 @@ def manage_message(message):
     if message.subject == 'herald/directory/discovery/step1':
         print('** SENDING STEP 2 MESSAGE **')
         put_message(get_step2_response(message), encapsulate=False)
-
+    elif message.subject == 'herald/directory/discovery/step3':
+        print('** SENDING ADD MESSAGE TO ADD PYBOARD SERVICES')
+        put_message(get_step3_response(message), encapsulate=False)
+    elif message.subject == 'herald/rpc/xmlrpc':
+        print('** SENDING RESPONSE MESSAGE TO XMLRPC MESSAGE')
+        put_message(get_rpc_answer(message), encapsulate=False)
+    else:
+        print('** UNMATCHED MESSAGE: {}'.format(message.subject))
 
 # ---------- MAIN LOOP ------------
 reader = MessageReader(automata, hello_callback)
