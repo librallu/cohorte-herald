@@ -24,10 +24,13 @@ Main application on PyBoard
     limitations under the License.
 """
 
+import pyb
+from ipopo import *
+
 # automata import
 import automata
 from serial_herald_message import *
-import pyb
+
 
 
 # pins declarations
@@ -37,6 +40,13 @@ led_pin = 'X11'
 
 # bluetooth connection initialization
 uart = pyb.UART(1, 38400)
+
+# define node uid for the pyboard
+uid = gen_node_uid()
+# use mac address of the bluetooth module (fixed)
+mac = '20:14:03:19:88:23'
+# automata for reading bluetooth flow
+automata = automata.SerialAutomata()
 
 
 def get_message_uart():
@@ -49,36 +59,6 @@ def get_message_uart():
         print(message)
         return message
     return None
-
-
-def gen_node_uid():
-    """
-    :return: string representing the node UID of the pyboard
-    Format like "f07569ba-77ab-4f01-a041-c86c6b58c3cd"
-    """
-
-    def gen_rand_hexa():
-        return hex(pyb.rng() % 16)[2:]
-
-    res = ''
-    for i in range(0, 8):
-        res += gen_rand_hexa()
-    res += '-'
-    for j in range(0, 3):
-        for i in range(0, 4):
-            res += gen_rand_hexa()
-        res += '-'
-    for i in range(0, 12):
-        res += gen_rand_hexa()
-    return res
-
-
-# define node uid for the pyboard
-uid = gen_node_uid()
-# use mac address of the bluetooth module (fixed)
-mac = '20:14:03:19:88:23'
-# automata for reading bluetooth flow
-automata = automata.SerialAutomata()
 
 
 def set_led(value):
@@ -252,16 +232,41 @@ def manage_message(message):
     else:
         print('** UNMATCHED MESSAGE: {}'.format(message.subject))
 
-# ---------- MAIN LOOP ------------
+
+
+
+# herald message handlers
 reader = MessageReader(automata, hello_callback)
 
-
-while True:
+def extract_herald_message():
     # get message from uart
     new_message = get_message_uart()
     if new_message:
         automata.read(new_message)
     # pass it to the message reader
     msg = reader.read()
-    if msg:
-        manage_message(msg)
+    return msg
+
+
+def main():
+
+    # creating internal state of pyboard
+    print('iPOPO initialization')
+    print_ipopo_state()
+
+    # main loop
+    print('starting main loop')
+    while True:
+        msg = extract_herald_message()
+        if msg:
+            manage_message(msg)
+
+
+
+main()
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-
+import pyb #  for randomness
 """
 A component can have following decorators :
 
@@ -38,6 +38,9 @@ class ObservableSet:
 
     def __iter__(self):
         return iter(self._data)
+
+    def __contains__(self, elt):
+        return elt in self._data
 
     def add_listener_add(self, f):
         """
@@ -116,7 +119,8 @@ def ComponentFactory(factory_name):
                     _component_info[name]['validate'] = field
                 elif field.ipopo_kind == 'invalidate':
                     _component_info[name]['invalidate'] = field
-
+        if len(_component_info[name]['requires']) == 0:
+            _component_info[name]['active'] = True
         return new_class
     return class_builder
 
@@ -140,6 +144,7 @@ def Instantiate(name):
         _component_info[name]['factory'] = name+'_factory'
         _component_info[name]['validate'] = None
         _component_info[name]['invalidate'] = None
+        _component_info[name]['active'] = False
 
         # rebinds class with name
         _class_binding[name] = new_class
@@ -217,7 +222,37 @@ def print_ipopo_state():
         print('\t- property {}'.format(_component_info[name]['property']))
         print('\t- validate:{}'.format(_component_info[name]['validate']))
         print('\t- invalidate:{}'.format(_component_info[name]['invalidate']))
+        print('\t- active:{}'.format(_component_info[name]['active']))
     print('-'*30)
+
+
+def is_component_can_start(component):
+    """
+    :param component:
+    :return: True if component can start, false elsewhere
+    """
+    services_required = _component_info[component]['requires']
+    for i in services_required:
+        if i not in _external_services:
+            return False
+    return True
+
+def is_component_active(component):
+    """
+    :param component:
+    :return: true if component is active
+    """
+    return _component_info[component]['active']
+
+def ipopo_exported():
+    """
+    :return: list of exported services
+    """
+    res = []
+    for name in _class_binding:
+        if is_component_active(name):
+            res.extend(_component_info[name]['provides'])
+    return res
 
 
 class RemoteObject:
@@ -234,3 +269,25 @@ class RemoteObject:
         def foo(*args, **kwargs):
             print('{} called with parameters {}, {}'.format(item, args, kwargs))
         return foo
+
+
+def gen_node_uid():
+    """
+    :return: string representing the node UID of the pyboard
+    Format like "f07569ba-77ab-4f01-a041-c86c6b58c3cd"
+    """
+
+    def gen_rand_hexa():
+        return hex(pyb.rng() % 16)[2:]
+
+    res = ''
+    for i in range(0, 8):
+        res += gen_rand_hexa()
+    res += '-'
+    for j in range(0, 3):
+        for i in range(0, 4):
+            res += gen_rand_hexa()
+        res += '-'
+    for i in range(0, 12):
+        res += gen_rand_hexa()
+    return res

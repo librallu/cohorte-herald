@@ -1,6 +1,6 @@
 from ipopo import ComponentFactory, Provides, Requires, \
     Validate, Invalidate, Instantiate, Property, print_ipopo_state, \
-    RemoteObject
+    RemoteObject, ipopo_exported
 
 
 @ComponentFactory('led-pyboard-factory')
@@ -59,6 +59,7 @@ if __name__ == '__main__':
     # and checks if the components are correctly declared with
     # the correct properties
     print_ipopo_state()
+    print('exported: {}'.format(ipopo_exported()))
 
     # shows that the remote object call a special method when
     # a method is called.
