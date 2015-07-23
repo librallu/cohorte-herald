@@ -150,28 +150,32 @@ def get_step3_response(request):
     :param request: SerialHeraldMessage object of the request
     :return: step3 response (SerialHeraldMessage object)
     """
-    content = '''
-    [
-        {
-            'specifications': ['python:/herald.pyboard.photo'],
-            'peer': ' '''+uid+''' ',
-            'configurations': ('herald-xmlrpc',),
-            'uid': ' '''+uid+''' ',
-            'properties': {
-                'herald.rpc.peer': ' '''+uid+''' ',
-                'endpoint.framework.uuid': ' '''+uid+''' ',
-                'herald.rpc.subject': 'herald/rpc/xmlrpc',
-                'objectClass': ['herald.pyboard.photo'],
-                'instance.name': 'pyboard-photo',
-                'service.imported': True,
-                'service.imported.configs': ('herald-xmlrpc',),
-                'endpoint.service.id': 42,
-                'service.ranking': 0
-            },
-            'name': 'service_42'}
-    ]
-    '''
+    res = []
+    for service in ipopo_exported():
+        res.append(service_rpc_string(service, uid))
+    content = str(res)
     content = compress_msg(content)
+    # content = '''
+    # [
+    #     {
+    #         'specifications': ['python:/herald.pyboard.photo'],
+    #         'peer': ' '''+uid+''' ',
+    #         'configurations': ('herald-xmlrpc',),
+    #         'uid': ' '''+uid+''' ',
+    #         'properties': {
+    #             'herald.rpc.peer': ' '''+uid+''' ',
+    #             'endpoint.framework.uuid': ' '''+uid+''' ',
+    #             'herald.rpc.subject': 'herald/rpc/xmlrpc',
+    #             'objectClass': ['herald.pyboard.photo'],
+    #             'instance.name': 'pyboard-photo',
+    #             'service.imported': True,
+    #             'service.imported.configs': ('herald-xmlrpc',),
+    #             'endpoint.service.id': 42,
+    #             'service.ranking': 0
+    #         },
+    #         'name': 'service_42'}
+    # ]
+    # '''
 
     return SerialHeraldMessage(
         subject='herald/rpc/discovery/add',
@@ -260,8 +264,6 @@ def main():
         msg = extract_herald_message()
         if msg:
             manage_message(msg)
-
-
 
 main()
 

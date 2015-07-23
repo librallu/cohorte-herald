@@ -1,4 +1,4 @@
-import pyb #  for randomness
+import pyb  # for randomness
 """
 A component can have following decorators :
 
@@ -83,6 +83,10 @@ _external_services = ObservableSet()
 _class_binding = {}
 
 _component_info = {}
+
+_id_counter = 0
+
+_internal_services = {}
 
 
 def get_name(input_class):
@@ -171,11 +175,19 @@ def Provides(service):
     :return:
     """
     def class_builder(original_class):
+        global _id_counter
         new_class = original_class
         name = get_name(new_class)
 
         # add service to component info
-        _component_info[name]['provides'].add(service)
+        _component_info[name]['provides'].add(_id_counter)
+
+        _internal_services[service] = _id_counter
+        if '_ipopo_provides' in dir(new_class):
+            new_class._ipopo_provides.add(_id_counter)
+        else:
+            new_class._ipopo_provides = set([service])
+        _id_counter += 1
 
         # rebinds class with name
         _class_binding[name] = new_class
@@ -207,12 +219,22 @@ def Property(variable, prop_name, value):
     return class_builder
 
 
+def service_name_from_id(id):
+    for i in _internal_services:
+        if _internal_services[i] == id:
+            return i
+    return None
+
+
 def print_ipopo_state():
     """
     For debug use only: print local variables information
     """
     print('='*30)
     print('external_services: {}'.format(_external_services))
+    print('internal_services:')
+    for i in _internal_services:
+        print('\t{}->{}'.format(i, _internal_services[i]))
     print('~'*10)
     for name in _class_binding:
         component = _class_binding[name]
@@ -254,6 +276,8 @@ def ipopo_exported():
             res.extend(_component_info[name]['provides'])
     return res
 
+def get_local_service_id(service):
+    return _internal_services[service]
 
 class RemoteObject:
     """
@@ -291,3 +315,52 @@ def gen_node_uid():
     for i in range(0, 12):
         res += gen_rand_hexa()
     return res
+
+
+
+def service_rpc_string(service, uid):
+    return {
+        'specifications': ['python:/'+service],
+        'peer': '{}'.format(uid),
+        'configurations': ('herald-xmlrpc',),
+        'uid': '{}'.format(uid),
+        'properties': {
+            'herald.rpc.peer': '{}'.format(uid),
+            'endpoint.framework.uuid': '{}'.format(uid),
+            'herald.rpc.subject': 'herald/rpc/xmlrpc',
+            'objectClass': [service],
+            'instance.name': service,
+            'service.imported': True,
+            'service.imported.configs': ('herald-xmlrpc',),
+            'endpoint.service.id': get_local_service_id(service),
+            'service.ranking': 0
+        },
+        'name': 'service_{}'.format(get_local_service_id(service))
+    }
+
+
+def call_service(service_string, params=[]):
+    """
+    Calls a service available from the service string
+    :param service_string: example: "service_29.ping"
+    :param params: parameter list for call
+    :return: XML string for result
+    """
+    string_start = service_string.split('.')[0]
+    service_id = int(string_start.split('_')[1])
+    method = '.'.join(service_string.split('.')[1:])
+    # find component that have required service id
+    print('service id: {}, method: {}'.format(service_id, method))
+    required_component = None
+    for name in _class_binding:
+        component = _class_binding[name]
+        if service_id in _component_info[name]['provides']:
+            required_component = component
+    if required_component is not None:
+        if method in dir(required_component):
+            result = getattr(required_component, method)(required_component, *params)
+            return result
+        else:
+            print('error: component does not have method {}'.format(method))
+    else:
+        print('error: service with id {} does not exist'.format(service_id))
