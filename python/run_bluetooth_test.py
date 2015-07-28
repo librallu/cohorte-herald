@@ -94,6 +94,7 @@ def main(http_port, peer_name, node_name, app_id):
 
          # foo service for testing rpc
          'ping',
+         'testUseCase',
 
          ),
         {herald.FWPROP_NODE_UID: node_name,
