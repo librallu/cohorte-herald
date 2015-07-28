@@ -54,7 +54,9 @@ def to_bluetooth_message(msg):
     :return: bluetooth message as a string
     """
     msg = to_string(msg)
-    return str(len(msg)) + DELIMITER + msg
+    msg = msg.replace('\n', '')
+    print('BLUETOOTH MESSAGE : '+str(len(str(msg))) + DELIMITER + msg)
+    return str(len(str(msg))) + DELIMITER + msg
 
 
 class MessageReader:
