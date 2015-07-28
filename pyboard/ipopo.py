@@ -1,4 +1,5 @@
 import pyb  # for randomness
+from xmlrpc import create_answer
 """
 A component can have following decorators :
 
@@ -20,7 +21,6 @@ TODO:
 """
 
 # ===== INTERNAL CLASSES =====
-
 
 class ObservableSet:
     """
@@ -78,9 +78,13 @@ class ObservableSet:
 
 # services provided in the application
 _external_services = ObservableSet()
+# _external_services = set()
 
 # component name -> class
 _class_binding = {}
+
+# temporary variable for exploring components
+_ipopo_explorer = {}
 
 _component_info = {}
 
@@ -105,6 +109,7 @@ def ComponentFactory(factory_name):
     :param factory_name: name of the factory
     """
     def class_builder(original_class):
+        print('componentFactory call {}'.format(_ipopo_explorer))
         new_class = original_class
         name = get_name(new_class)
 
@@ -112,17 +117,20 @@ def ComponentFactory(factory_name):
         _component_info[name]['factory'] = factory_name
 
         # rebinds class with name
-        _class_binding[name] = new_class
+        _class_binding[name] = new_class()
 
         # finds validate and invalidate decorators
-        fields = [getattr(new_class, method) for method in dir(new_class)
-                  if callable(getattr(new_class, method))]
-        for field in fields:
-            if 'ipopo_kind' in dir(field):
-                if field.ipopo_kind == 'validate':
-                    _component_info[name]['validate'] = field
-                elif field.ipopo_kind == 'invalidate':
-                    _component_info[name]['invalidate'] = field
+        # fields = [getattr(new_class, method) for method in dir(new_class)
+        #           if callable(getattr(new_class, method))]
+        # for field in fields:
+        #     if 'ipopo_kind' in dir(field):
+        #         if field.ipopo_kind == 'validate':
+        #             _component_info[name]['validate'] = field
+        #         elif field.ipopo_kind == 'invalidate':
+        #             _component_info[name]['invalidate'] = field
+        _component_info[name]['validate'] = _ipopo_explorer.get('validate', None)
+        _component_info[name]['invalidate'] = _ipopo_explorer.get('invalidate', None)
+
         if len(_component_info[name]['requires']) == 0:
             _component_info[name]['active'] = True
         return new_class
@@ -157,12 +165,13 @@ def Instantiate(name):
 
 
 def Validate(function):
-    function.ipopo_kind = 'validate'
+    print('validate call')
+    _ipopo_explorer['validate'] = function
     return function
 
 
 def Invalidate(function):
-    function.ipopo_kind = 'invalidate'
+    _ipopo_explorer['invalidate'] = function
     return function
 
 
@@ -339,6 +348,7 @@ def service_rpc_string(service, uid):
     }
 
 
+
 def call_service(service_string, params=[]):
     """
     Calls a service available from the service string
@@ -358,8 +368,9 @@ def call_service(service_string, params=[]):
             required_component = component
     if required_component is not None:
         if method in dir(required_component):
-            result = getattr(required_component, method)(required_component, *params)
-            return result
+            # result = getattr(required_component, method)(required_component, *params)
+            result = getattr(required_component, method)(*params)
+            return create_answer(result)
         else:
             print('error: component does not have method {}'.format(method))
     else:

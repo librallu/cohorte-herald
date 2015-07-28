@@ -23,19 +23,16 @@ Main application on PyBoard
     See the License for the specific language governing permissions and
     limitations under the License.
 """
-
 import pyb
 from ipopo import *
+from xmlrpc import *
 
 # automata import
 import automata
 from serial_herald_message import *
 
+from components import *
 
-
-# pins declarations
-photo_pin = 'X12'
-led_pin = 'X11'
 
 
 # bluetooth connection initialization
@@ -105,7 +102,7 @@ def hello_callback():
     put_message(HELLO_MESSAGE)
 
 
-def compress_msg(message):
+def compress_msg(message, no_spaces=False):
     """
     removes new lines, tabs and spaces in a message
     :param message: message to be compressed
@@ -113,7 +110,8 @@ def compress_msg(message):
     """
     message = message.replace('\n', '')
     message = message.replace('\t', '')
-    message = message.replace(' ', '')
+    if not no_spaces:
+        message = message.replace(' ', '')
     return message
 
 
@@ -152,30 +150,10 @@ def get_step3_response(request):
     """
     res = []
     for service in ipopo_exported():
-        res.append(service_rpc_string(service, uid))
+        service_name = service_name_from_id(service)
+        res.append(service_rpc_string(service_name, uid))
     content = str(res)
     content = compress_msg(content)
-    # content = '''
-    # [
-    #     {
-    #         'specifications': ['python:/herald.pyboard.photo'],
-    #         'peer': ' '''+uid+''' ',
-    #         'configurations': ('herald-xmlrpc',),
-    #         'uid': ' '''+uid+''' ',
-    #         'properties': {
-    #             'herald.rpc.peer': ' '''+uid+''' ',
-    #             'endpoint.framework.uuid': ' '''+uid+''' ',
-    #             'herald.rpc.subject': 'herald/rpc/xmlrpc',
-    #             'objectClass': ['herald.pyboard.photo'],
-    #             'instance.name': 'pyboard-photo',
-    #             'service.imported': True,
-    #             'service.imported.configs': ('herald-xmlrpc',),
-    #             'endpoint.service.id': 42,
-    #             'service.ranking': 0
-    #         },
-    #         'name': 'service_42'}
-    # ]
-    # '''
 
     return SerialHeraldMessage(
         subject='herald/rpc/discovery/add',
@@ -192,17 +170,19 @@ def get_rpc_answer(request):
     :param request: SerialHeraldMessage object of the request
     :return: xmlrpc response (SerialHeraldMessage object)
     """
-    content = '''
-    <?xml version='1.0'?>
-        <methodResponse>
-        <params>
-            <param>
-                <value><int>78</int></value>
-            </param>
-        </params>
-    </methodResponse>
-    '''
-    content = compress_msg(content)
+    # content = '''
+    # <?xml version='1.0'?>
+    #     <methodResponse>
+    #     <params>
+    #         <param>
+    #             <value><int>78</int></value>
+    #         </param>
+    #     </params>
+    # </methodResponse>
+    # '''
+    content = call_service(*extract_request_info(request.content))
+    print("responding request with {}".format(content))
+    content = compress_msg(content, no_spaces=True)
 
     return SerialHeraldMessage(
         subject='herald/rpc/xmlrpc/reply',
@@ -237,8 +217,6 @@ def manage_message(message):
         print('** UNMATCHED MESSAGE: {}'.format(message.subject))
 
 
-
-
 # herald message handlers
 reader = MessageReader(automata, hello_callback)
 
@@ -256,7 +234,9 @@ def main():
 
     # creating internal state of pyboard
     print('iPOPO initialization')
-    print_ipopo_state()
+    # while True:
+    #     print_ipopo_state()
+    #     pyb.delay(2000)
 
     # main loop
     print('starting main loop')
@@ -265,10 +245,5 @@ def main():
         if msg:
             manage_message(msg)
 
+
 main()
-
-
-
-
-
-

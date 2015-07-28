@@ -27,6 +27,8 @@ def create_answer(value_list):
     :param value_list: input list of values
     :return: generated xml string
     """
+    if value_list is None:
+        value_list = []
     res = "<?xml version='1.0'?>"
     res += "<methodResponse><params>"
     for i in value_list:
