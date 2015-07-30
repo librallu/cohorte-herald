@@ -64,7 +64,7 @@ def gen_uuid():
     :return uuid of a message 32 random hexadecimal chars
     """
     res = ''
-    for i in range(0,32):
+    for i in range(0, 32):
         res += hex(pyb.rng() % 16)[2:].upper()
     return res
 
@@ -83,16 +83,18 @@ class MessageReader:
         if self._automata.any_message():
             msg = self._automata.get_message()
             # if there is a hello message
-            if len(self._buffer) == 0:
-                # if we are not into reading a new herald message
-                if to_string(msg) == to_string(HELLO_MESSAGE):
-                    # call the hello received callback
-                    if self._hello_received_callback:
-                        self._hello_received_callback()
-                    # exiting before continuing in the
-                    # creation of an herald message
-                    return None
+            # if len(self._buffer) == 0:
+            # if we are not into reading a new herald message
+            if to_string(msg) == to_string(HELLO_MESSAGE):
+                # call the hello received callback
+                if self._hello_received_callback:
+                    self._hello_received_callback()
+                # exiting before continuing in the
+                # creation of an herald message
+                return None
             self._buffer.append(msg)
+            print('READER BUFFER: {}'.format(self._buffer))
+            print('BUFFER LEN: {}'.format(len(self._buffer)))
             if len(self._buffer) >= 7:
                 res = SerialHeraldMessage(*self._buffer)
                 self._buffer.clear()

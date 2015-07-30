@@ -204,12 +204,12 @@ def Provides(service):
     return class_builder
 
 
-def Requires(variable_name, service_name):
+def Requires(variable_name, service_name, optional=False):
     def class_builder(original_class):
         new_class = original_class
         name = get_name(new_class)
 
-        _component_info[name]['requires'].add((variable_name, service_name))
+        _component_info[name]['requires'].add((variable_name, service_name, optional))
         # rebinds class with name
         _class_binding[name] = new_class
         return new_class

@@ -53,7 +53,9 @@ def get_message_uart():
     """
     if uart.any():
         message = to_string(uart.read())
-        print(message)
+        while uart.any():  # for getting entire message
+            message += to_string(uart.read())
+        print('UART RECEIVED: {}'.format(message))
         return message
     return None
 
@@ -89,7 +91,7 @@ def put_message(message, encapsulate=True):
     output = to_string(message)
     if encapsulate:
         output = str(len(message))+DELIMITER+to_string(message)
-    print('sending: {}'.format(output))
+    print('uart sending: {}'.format(output))
     uart.write(output)
 
 
@@ -194,6 +196,21 @@ def get_rpc_answer(request):
     ).to_automata_string()
 
 
+def get_routing_answer(request):
+    """
+    :param request: SerialHeraldMessage object of the routing hello request
+    :return: response for hello request
+    """
+    return SerialHeraldMessage(
+        subject='herald/routing/reply/N/',
+        sender_uid=uid,
+        original_sender=uid,
+        final_destination=request.original_sender,
+        content='micronode',
+        reply_to=request.message_uid
+    ).to_automata_string()
+
+
 def manage_message(message):
     """
     Extract useful information in the message
@@ -213,6 +230,9 @@ def manage_message(message):
     elif message.subject == 'herald/rpc/xmlrpc':
         print('** SENDING RESPONSE MESSAGE TO XMLRPC MESSAGE')
         put_message(get_rpc_answer(message), encapsulate=False)
+    elif to_string(message.subject) == to_string('herald/routing/hello/'):
+        print('** RESPONDING TO ROUTING HELLO MESSAGE')
+        put_message(get_routing_answer(message), encapsulate=False)
     else:
         print('** UNMATCHED MESSAGE: {}'.format(message.subject))
 

@@ -40,7 +40,7 @@ class Led:
 
 @ComponentFactory('generic_sensor')
 @Property('_id', 'sensor.id', '[TODO] NODE UUID')
-@Requires('_store', 'store.services.storeService')
+@Requires('_store', 'store.services.storeService', optional=True)
 @Instantiate('sensor.services.sensorService')
 class Sensor:
 
