@@ -36,8 +36,7 @@ import logging
 from herald.transports.bluetooth.serial_herald_message import \
     HELLO_MESSAGE, to_string, to_bluetooth_message, MessageReader
 PORT = 1
-DELAY_BETWEEN_TRIES = 10
-TIMEOUT = 30
+DELAY_BETWEEN_TRIES = 5
 
 _logger = logging.getLogger(__name__)
 
@@ -51,7 +50,7 @@ class NotValid(Exception):
 class Connection:
 
     def __init__(self, mac, msg_callback,
-                 msg_handle_freq=1, timeout=3,
+                 msg_handle_freq=1, timeout=10,
                  err_callback=None, start_callback=None):
         """
         constructor of a connection.
@@ -88,10 +87,25 @@ class Connection:
         self._init_thread.start()
         self._alive_thread = None
         self._last_hello_received = None
+        self._lock = threading.Lock()   # for mutex
+        self._buffer_last_sent = datetime.datetime.now()
+        self._buffer = ''
 
     def _handle_hello(self):
         print('hello handled')
         self._last_hello_received = datetime.datetime.now()
+
+    def _send_buffer(self):
+        while self._valid:
+            # print('############ SEND_BUFFER')
+            if datetime.datetime.now() - self._buffer_last_sent > datetime.timedelta(seconds=1):
+                with self._lock:
+                    time.sleep(1)
+                    if self._valid:
+                        self._socket.sendall(self._buffer)
+                        # print('BUFFER SENT: {}'.format(self._buffer))
+                        self._buffer = ''
+        print('#### END OF SEND BUFFER LOOP')
 
     def _init_connection(self):
         """
@@ -126,6 +140,8 @@ class Connection:
                 self._loop_thread.start()
                 self._alive_thread = threading.Thread(target=self._alive_loop)
                 self._alive_thread.start()
+                self._buffer_thread = threading.Thread(target=self._send_buffer)
+                self._buffer_thread.start()
 
                 self._start_callback(self._mac)
         except bluetooth.btcommon.BluetoothError:
@@ -134,6 +150,7 @@ class Connection:
             else:
                 _logger.info('{} disconnected: bluetooth exception'.format(self._mac))
                 self._err_callback(self._mac)
+        print('#### END OF CONNECTION INIT')
 
     def _alive_loop(self):
         """
@@ -144,11 +161,13 @@ class Connection:
         while self._valid:
             last_ask = datetime.datetime.now()
             time.sleep(DELAY_BETWEEN_TRIES)
-            self.send_message(HELLO_MESSAGE, encapsulate=True)
+            if self._valid:
+                self.send_message(HELLO_MESSAGE, encapsulate=True)
             # time.sleep(TIMEOUT)
-            if self._last_hello_received < last_ask - datetime.timedelta(seconds=TIMEOUT):
+            if self._last_hello_received < last_ask - datetime.timedelta(seconds=self._timeout):
                 _logger.info('{} disconnected: timeout elapsed'.format(self._mac))
                 self._err_callback(self._mac)
+        print('#### END OF ALIVE LOOP')
 
     def _loop(self):
         """
@@ -169,6 +188,7 @@ class Connection:
             if msg != '' and msg is not None:
                 # print('connection: message obtained:{}'.format(msg))
                 self._msg_callback(msg, self._mac)
+        print('#### END OF MAIN LOOP')
 
     def send_message(self, msg, check_valid=True, encapsulate=False):
         """
@@ -182,10 +202,23 @@ class Connection:
         # wait for the communication
         while check_valid and not self._valid:
             pass
-        if encapsulate:
-            self._socket.send(to_bluetooth_message(msg))
-        else:
-            self._socket.send(msg)
+        # self._lock.acquire()
+        with self._lock:
+            print('CONNECTION LOCK ACQUIRED')
+            if encapsulate:
+                if check_valid:
+                    self._buffer += to_bluetooth_message(msg)
+                else:
+                    self._socket.sendall(to_bluetooth_message(msg))
+                print('SENDING: {}'.format(to_bluetooth_message(msg)))
+            else:
+                if check_valid:
+                    self._buffer += msg
+                else:
+                    self._socket.sendall(msg)
+                print('SENDING: {}'.format(msg))
+            print('CONNECTION LOCK RELEASED')
+        # self._lock.release()
 
     def _receive_message(self, with_timeout=True, check_valid=True):
         """
@@ -221,6 +254,7 @@ class Connection:
         """
         Close the connection with the pair
         """
+        print('#### CLOSING BLUETOOTH CONNECTION')
         self._valid = False
         self._closed = True
         self._socket.close()

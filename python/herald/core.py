@@ -1091,6 +1091,11 @@ class Herald(object):
 
         return result
 
+    # No listener found: send an error message
+    # self.reply(message,
+    #            {'uid': message.uid, 'subject': message.subject},
+    #            'herald/error/no-listener')
+
     def reply(self, message, content, subject=None):
         """
         Replies to a message

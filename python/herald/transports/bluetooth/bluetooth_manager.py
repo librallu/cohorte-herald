@@ -45,6 +45,7 @@ import herald.utils
 from herald.transports.bluetooth.communication_set import CommunicationSet
 import herald.transports.peer_contact as peer_contact
 from herald.transports.bluetooth.serial_herald_message import *
+import threading
 
 from . import ACCESS_ID
 from . import beans
@@ -71,17 +72,21 @@ class BluetoothManager:
         self.__contact = None
         self._directory = None
         self._herald = None
+        self._lock = threading.Lock()   # for mutex
 
     def herald_to_bluetooth(self, bean):
-        return SerialHeraldMessage(
+
+        msg = SerialHeraldMessage(
             subject=bean.subject,
             sender_uid=self._directory.local_uid,
-            original_sender=bean.headers['original_sender'],
+            original_sender=bean.headers['original_sender'] or self._directory.local_uid,
             final_destination=bean.headers.get('final_destination') or '',
             content=str(bean.content),
             reply_to='',
             message_uid=bean.uid
         )
+        print('SERIAL FORGED: {}'.format(msg))
+        return msg
 
     @staticmethod
     def bluetooth_to_herald(msg):
@@ -194,16 +199,16 @@ class BluetoothManager:
         :return: True if the message has been
         successfully sent and False elsewhere
         """
-
-        _logger.info('SENDING MESSAGE {}'.format(message))
-        print(mac)
-        print(type(mac))
-        if not self._coms.has_connection(mac):
-            return False
-        print('*'*30)
-        self._coms.send_to(mac,
-                           self.herald_to_bluetooth(message).to_automata_string())
-        return True
+        with self._lock:
+            _logger.info('SENDING MESSAGE {}'.format(message))
+            print(mac)
+            print(type(mac))
+            if not self._coms.has_connection(mac):
+                return False
+            print('*'*30)
+            self._coms.send_to(mac,
+                               self.herald_to_bluetooth(message).to_automata_string())
+            return True
 
     def register_callback(self, f):
         """

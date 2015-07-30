@@ -86,6 +86,12 @@ def main(http_port, peer_name, node_name, app_id):
          'herald.transports.bluetooth.bluetooth_manager',
          'test_bluetooth',
 
+         # ROUTING
+         'herald.routing_handler',
+         'herald.routing_hellos',
+         'herald.routing_roads',
+         'herald.routing_json',
+
          # RPC
          'pelix.remote.dispatcher',
          'pelix.remote.registry',
@@ -93,8 +99,8 @@ def main(http_port, peer_name, node_name, app_id):
          'herald.remote.herald_xmlrpc',
 
          # foo service for testing rpc
-         'ping',
-         'testUseCase',
+         # 'ping',
+         # 'testUseCase',
 
          ),
         {herald.FWPROP_NODE_UID: node_name,

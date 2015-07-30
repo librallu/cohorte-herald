@@ -142,8 +142,8 @@ class NeighbourInformation:
 @Requires('_herald', herald.SERVICE_HERALD_INTERNAL)  # for sending messages
 @Requires('_directory', herald.SERVICE_DIRECTORY)  # for getting neighbours
 @Property('_filters', herald.PROP_FILTERS, ['herald/routing/reply/*'])
-@Property('_hello_delay', 'hello_delay', 3)
-@Property('_hello_timeout', 'hello_timeout', 2)
+@Property('_hello_delay', 'hello_delay', 5)
+@Property('_hello_timeout', 'hello_timeout', 12)
 @Property('_granularity', 'metric_granularity', .00003)
 @Instantiate('herald-routing-hellos')
 class Hellos:

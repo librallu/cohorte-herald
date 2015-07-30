@@ -112,6 +112,7 @@ class SerialHeraldMessage:
         self._message_uid = to_string(message_uid)
 
     def to_automata_string(self):
+        print('SENDING: {}'.format(self.__str__()))
         res = ''
         res += to_bluetooth_message(self.subject)
         res += to_bluetooth_message(self.sender_uid)
