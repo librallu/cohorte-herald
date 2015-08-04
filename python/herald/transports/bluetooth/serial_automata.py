@@ -53,6 +53,7 @@ class SerialAutomata:
     def get_message(self):
         """
         :return: First non-read message
+
         Throws an exception if there is no waiting message
         """
         return self._previous_messages.pop(0)
@@ -60,7 +61,9 @@ class SerialAutomata:
     def read(self, part):
         """
         reads a part of the message
-        :part: string read in the serial input
+
+        :param part: string read in the serial input
+
         """
         for i in part:
             self._read_char(i)
@@ -87,7 +90,9 @@ class SerialAutomata:
     def _read_char(self, char):
         """
         Reads a char from the input flux.
+
         :param char: input
+
         """
         if self._is_reading_number:
             if ord('0') <= ord(char) <= ord('9'):

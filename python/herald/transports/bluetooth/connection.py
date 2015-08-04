@@ -48,6 +48,9 @@ class NotValid(Exception):
         return repr(self.value)
 
 class Connection:
+    """
+    Represents a connection with a distant bluetooth pair
+    """
 
     def __init__(self, mac, msg_callback,
                  msg_handle_freq=1, timeout=10,
@@ -57,6 +60,7 @@ class Connection:
         Start a new process to initialize the connection
         with the distant pair. This process puts the is_valid()
         method to True when it's done.
+
         :param mac: mac address of the peer bluetooth device
         :param msg_callback: function that will be called with the
             received message (String) and the MAC address (String)
@@ -69,7 +73,7 @@ class Connection:
                 there is an error when initialization connection.
         :param start_callback: function to be called when
                 the peer is started (has responded correctly)
-        :return:
+
         """
         self._timeout = timeout
         self._err_callback = err_callback
@@ -110,8 +114,9 @@ class Connection:
     def _init_connection(self):
         """
         initialize connection with a two step discovery.
-        - first: send a HELLO_MESSAGE to the device
-        - second: wait a HELLO_MESSAGE from the device
+            - first: send a HELLO_MESSAGE to the device
+            - second: wait a HELLO_MESSAGE from the device
+
         """
         try:
             # connection with the peer
@@ -193,11 +198,13 @@ class Connection:
     def send_message(self, msg, check_valid=True, encapsulate=False):
         """
         Sends message msg to the peer
+
         :param msg: message to send
         :param check_valid: if true, wait to the connection
         :param encapsulate: if true, encapsulate for bluetooth transmission
             False by default
-        to be valid.
+            to be valid.
+
         """
         # wait for the communication
         while check_valid and not self._valid:
@@ -225,12 +232,14 @@ class Connection:
         WARNING: This is a blocking call.
         So, for common uses, please use
         the callback mechanism available.
+
         :param with_timeout: if true, waits until
-        the timeout before returning nothing.
+            the timeout before returning nothing.
         :param check_valid: if True, raise NotValid
-        if the connection is not valid (is_valid()==False)
+            if the connection is not valid (is_valid()==False)
         :return: message read from the peer
             None if timeout passed
+
         """
         while not self._automata.any_message():
             try:
@@ -263,12 +272,14 @@ class Connection:
         """
         :return: True if the connection is valid
             false elsewhere
+
         """
         return self._valid
 
     def is_closed(self):
         """
         :return: True if connection is closed
-        i.e. it is not used
+            i.e. it is not used
+
         """
         return self._closed

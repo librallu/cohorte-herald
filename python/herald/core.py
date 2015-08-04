@@ -440,8 +440,11 @@ class Herald(object):
 
         :param message: A MessageReceived bean forged by the transport
         """
-        # print("incoming message : {}".format(message))
-        # print("target : {}".format(message.get_header('final_destination')))
+        print("incoming message : {}".format(message))
+        print('-----')
+        print(message.content)
+        print('-----')
+        print("target : {}".format(message.get_header('final_destination')))
         with self.__gc_lock:
             if message.uid in self.__treated:
                 # Message already handled, maybe it has been received by
@@ -474,6 +477,7 @@ class Herald(object):
         # if the message needs to be resent
         if self._is_router() and message.get_header('group') is not None:
             # print("$"*42+" {}".format(message.get_header('group')))
+            print('*'*30+' forwarding {}'.format(message))
             self.fire_group(message.get_header('group'), message)
 
         # if the message needs to be routed

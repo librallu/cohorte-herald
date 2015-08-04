@@ -65,6 +65,18 @@ _logger = logging.getLogger(__name__)
 @Provides(herald.transports.bluetooth.BLUETOOTH_MANAGER_SERVICE)
 @Instantiate('herald-bluetooth_manager-test')
 class BluetoothManager:
+    """
+    Implements a component that provides an interface to send herald messages
+    to a bluetooth device and provides callbacks when a message appears.
+
+    Requires:
+        - herald.transports.bluetooth.BLUETOOTH_DISCOVERY_SERVICE
+        - herald.SERVICE_DIRECTORY
+        - herald.SERVICE_HERALD_INTERNAL
+
+    Provides:
+        - herald.transports.bluetooth.BLUETOOTH_MANAGER_SERVICE
+    """
 
     def __init__(self):
         self._discovery = None
@@ -75,6 +87,12 @@ class BluetoothManager:
         self._lock = threading.Lock()   # for mutex
 
     def herald_to_bluetooth(self, bean):
+        """
+        makes a bluetooth from a herald message
+
+        :param bean: MessageBean
+        :return: according bluetooth message
+        """
 
         msg = SerialHeraldMessage(
             subject=bean.subject,
@@ -90,6 +108,12 @@ class BluetoothManager:
 
     @staticmethod
     def bluetooth_to_herald(msg):
+        """
+        makes a Herald message from a bluetooth message
+
+        :param msg: bluetooth message
+        :return: according herald message
+        """
         if msg.reply_to:
             res = MessageReceived(
                 uid=msg.message_uid,
@@ -100,7 +124,7 @@ class BluetoothManager:
                 access=ACCESS_ID
             )
             res.add_header(herald.MESSAGE_HEADER_REPLIES_TO, msg.reply_to)
-            return res
+
         else:
             res = Message(
                 subject=msg.subject,
@@ -111,7 +135,11 @@ class BluetoothManager:
             res.add_header("original_sender", msg.original_sender)
             if msg.final_destination:
                 res.add_header("final_destination", msg.final_destination)
-            return res
+
+        if msg.group:
+            print('BLUETOOTH MANAGER RECEIVES A BROADCAST')
+            res.add_header('group', msg.group)
+        return res
 
     def _when_added(self, mac):
         if self._coms is not None:
@@ -194,10 +222,12 @@ class BluetoothManager:
     def fire(self, mac, message):
         """
         send a message to a device
+
         :param mac: mac address of the device
         :param message: string message to send
         :return: True if the message has been
-        successfully sent and False elsewhere
+            successfully sent and False elsewhere
+
         """
         with self._lock:
             _logger.info('SENDING MESSAGE {}'.format(message))
@@ -213,7 +243,8 @@ class BluetoothManager:
     def register_callback(self, f):
         """
         :param f: f(msg, mac) that is called when
-        a message is received.
+            a message is received.
+
         """
         print('callback registered in bluetooth manager')
         self._coms.register_callback(f)
@@ -222,6 +253,7 @@ class BluetoothManager:
         """
         register f for be called when a peer
         is removed
+
         :param f: f(mac) added to callbacks
         :return: nothing
         """
@@ -231,6 +263,7 @@ class BluetoothManager:
         """
         register f for be called when a peer
         is new
+
         :param f: f(mac) added to callbacks
         :return: nothing
         """

@@ -51,7 +51,7 @@ _logger = logging.getLogger(__name__)
 @ComponentFactory("herald-routing-replies-factory")
 @Provides(herald.SERVICE_LISTENER)
 @Requires('_routing', herald.routing_constants.ROUTING_INFO, optional=True)
-@Property('_filters', herald.PROP_FILTERS, ['herald/routing/hello/*'])
+@Property('_filters', herald.PROP_FILTERS, ['herald/routing/hello/\*'])
 @Instantiate('herald-routing-replies')
 class MessageHandler:
     """
@@ -59,6 +59,12 @@ class MessageHandler:
 
     It's purpose is to listen when a Hello message is got.
     It next send back a Reply message to the sender.
+
+    - Component factory: *herald-routing-replies-factory*
+    - provides: herald.SERVICE_LISTENER
+    - Requires: '_routing', herald.routing_constants.ROUTING_INFO, optional=True
+    - Property: '_filters', herald.PROP_FILTERS, ['herald/routing/hello/\*']
+    - Instantiate: *herald-routing-replies*
     """
 
     def __init__(self):

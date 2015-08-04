@@ -54,8 +54,10 @@ class CommunicationSet:
     def has_connection(self, mac):
         """
         :param mac: peer to test connection
+
         :return: True if there is a connection
                  False elsewhere
+
         """
         return mac in self._connections
 
@@ -69,8 +71,10 @@ class CommunicationSet:
         """
         register f for be called when a peer
         is removed
+
         :param f: f(mac) added to callbacks
         :return: nothing
+
         """
         self._leave_callbacks.append(f)
 
@@ -78,16 +82,20 @@ class CommunicationSet:
         """
         register f for be called when a peer
         is started
+
         :param f: f(mac) added to callbacks
         :return: nothing
+
         """
         self._start_callbacks.append(f)
 
     def _when_leave(self, mac):
         """
         called when a peer leaves
+
         :param mac: mac address of peer
         :return: nothing
+
         """
         for i in self._leave_callbacks:
             i(mac)
@@ -98,8 +106,10 @@ class CommunicationSet:
     def _when_start(self, mac):
         """
         called when a peer appears
+
         :param mac: mac address of the peer
         :return: nothing
+
         """
         for i in self._start_callbacks:
             i(mac)
@@ -107,15 +117,18 @@ class CommunicationSet:
     def send_to(self, target, msg):
         """
         sends a message msg to a target
+
         :param target: MAC address of the target
         :param msg: message to send
+
         """
         self._connections[target].send_message(msg)
 
     def register_callback(self, f):
         """
         :param f: f(msg, mac) that is called when
-        a message is received.
+            a message is received.
+
         """
         with self._lock:
             self._callbacks.append(f)
@@ -124,8 +137,10 @@ class CommunicationSet:
         """
         Calls all registered functions when
         a message appears.
+
         :param msg: message
         :param mac: sender's mac address
+
         """
         with self._lock:
             for i in self._callbacks:
@@ -135,7 +150,9 @@ class CommunicationSet:
     def update_devices(self, mac_list):
         """
         updates device connections. Start new connections.
+
         :param mac_list: list of devices list(mac)
+
         """
         # if a device needs to be added
         for i in mac_list:

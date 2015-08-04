@@ -69,8 +69,7 @@ class Roads:
     It can be used by calling the method get_next_hop(peer) to
     get the next hop to accessing peer.
 
-    ROUTING_INFO service provides
-    -----------------------------
+    ROUTING_INFO service provides:
 
     - change_road(next_hop, metric, destination)
             ! should be used only if you know what you do !
@@ -102,6 +101,7 @@ class Roads:
     def validate(self, context):
         """
         When all requirements are satisfied
+
         :param context:
         :return: nothing
         """
@@ -118,6 +118,7 @@ class Roads:
     def invalidate(self, context):
         """
         when some requirements are unsatisfied
+
         :param context:
         :return: nothing
         """
@@ -130,6 +131,7 @@ class Roads:
     def _delete_neighbours_from_roads(self):
         """
         delete all known neighbours from roads
+
         :return: nothing
         """
         self._lock.acquire()
@@ -145,6 +147,7 @@ class Roads:
         main loop of the road sender daemon.
         It stops when the _active method is set to false
         and the current iteration is over.
+
         :return: nothing
         """
         while self._active:
@@ -172,6 +175,7 @@ class Roads:
         """
         get a dict() object of next_hop for all known
         pairs.
+
         :return: returns peer -> next_hop
         """
         self._delete_neighbours_from_roads()
@@ -218,8 +222,9 @@ class Roads:
 
     def change_road(self, next_hop, metric, destination):
         """
-        Change road for going to destination with next_hop and metric
-        If next_hop or metric is None, delete the road
+        Change road for going to destination with next\_hop and metric
+        If next\_hop or metric is None, delete the road.
+
         :param: next_hop:
         :param: metric:
         :param: destination:

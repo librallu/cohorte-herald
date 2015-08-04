@@ -61,6 +61,14 @@ _logger = logging.getLogger(__name__)
 class BluetoothDirectory(object):
     """
     Bluetooth Directory for Herald
+
+    provides:
+        - herald.SERVICE_TRANSPORT_DIRECTORY
+        - SERVICE_BLUETOOTH_DIRECTORY
+
+    requires:
+        - herald.SERVICE_DIRECTORY
+
     """
     def __init__(self):
         """

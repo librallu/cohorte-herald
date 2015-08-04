@@ -78,9 +78,23 @@ _logger = logging.getLogger(__name__)
 @Provides((herald.SERVICE_TRANSPORT, SERVICE_BLUETOOTH_TRANSPORT))
 @Property('_access_id', herald.PROP_ACCESS_ID, ACCESS_ID)
 @Instantiate('herald-bluetooth-transport')
-class HttpTransport(object):
+class BluetoothTransport(object):
     """
     Bluetooth sender for Herald.
+
+    Requires:
+        - herald.SERVICE_PROBE (best)
+        - herald.SERVICE_DIRECTORY
+        - herald.transports.bluetooth.BLUETOOTH_DISCOVERY_SERVICE
+        - herald.transports.bluetooth.BLUETOOTH_MANAGER_SERVICE
+
+    Provides:
+        - SERVICE_BLUETOOTH_TRANSPORT
+        - herald.SERVICE_TRANSPORT
+
+    Properties:
+        - herald.PROP_ACCESS_ID
+
     """
 
     def __init__(self):
@@ -127,8 +141,10 @@ class HttpTransport(object):
     def __get_access(peer, extra=None):
         """
         Compute MAC addrees from the peer uid given in parameter
+
         :param peer: A peer Bean
         :return: a mac address or None
+
         """
         mac = None
         if extra is not None:
@@ -140,10 +156,12 @@ class HttpTransport(object):
     def fire(self, peer, message, extra=None):
         """
         Fires a herald message
+
         :param peer: Bean to send the message
         :param message: Message Bean to send
         :param extra: extra informations (in this case, mac address)
         :return: nothing
+
         """
         mac = self.__get_access(peer, extra)
 
@@ -161,9 +179,11 @@ class HttpTransport(object):
         """
         Fire only the message.
         without probe logging and preparing message
+
         :param mac: mac address to send the message
         :param message: message to send
         :return: nothing
+
         """
         # send the message via the bluetooth_manager
 
@@ -178,10 +198,12 @@ class HttpTransport(object):
     def fire_group(self, group, peers, message):
         """
         Fire a grouped herald message
+
         :param group: string representing the group to send the message
         :param peers: list(Bean) peers to send the message
         :param message: message to send
         :return: list of reached peers
+
         """
         # Store the message once
         self._probe.store(
@@ -193,5 +215,4 @@ class HttpTransport(object):
         for peer in peers:
             self._fire(peer, message)
 
-        # FIXME maybe some of them will not be connected
         return peers

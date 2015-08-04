@@ -78,8 +78,7 @@ class RoutingJson:
     And also known neighbours with metrics
 
 
-    ROUTING_JSON provides
-    ---------------------
+    ROUTING_JSON provides:
 
     - get_json_neighbours()
     - get_json_next_hop()
@@ -112,9 +111,11 @@ class RoutingJson:
     def get_methods(self):
         """
         list all commands
+
         :return: list of tuples of type (a,b)
-            a: command name
-            b: associated method
+
+            - a: command name
+            - b: associated method
         """
         return [
             ('get_neighbours', self.get_neighbours_shell),
@@ -266,6 +267,7 @@ class RoutingJson:
     def do_GET(self, request, response):
         """
         Handle a GET
+
         :param request: input request
         :param response: output request
         :return: nothing
@@ -282,8 +284,7 @@ class RoutingJson:
 
     def get_json_routing(self):
         """
-        :return: a JSON object (dict) that contains
-        the routing table with metrics.
+        :return: a JSON object (dict) that contains the routing table with metrics.
         """
         return self._routing.get_accessible_peers()
 

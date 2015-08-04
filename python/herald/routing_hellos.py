@@ -55,9 +55,10 @@ _logger = logging.getLogger(__name__)
 class NeighbourInformation:
     """
     Class that contains informations about a known peer uid:
-    - it's metric (float)
-    - it's last ask (datetime)
-    - if it is a router (boolean)
+
+     - it's metric (float)
+     - it's last ask (datetime)
+     - if it is a router (boolean)
     """
 
     def __init__(self):
@@ -91,6 +92,7 @@ class NeighbourInformation:
     def get_field(self, uid, name):
         """
         Gets the value of the field *name* for *uid*
+
         :param uid: peer uid
         :param name: name of the field
         :return: value of the field
@@ -124,6 +126,7 @@ class NeighbourInformation:
         return a set of neighbours.
         It is possible to specify a field name
         to extract only elements that are not None
+
         :param field: field to get non null info
         :return: set of neighbours uid
         """
@@ -155,14 +158,19 @@ class Hellos:
     It tells the SendRoad daemon if there is any changes
     in the connections with neighbours.
 
-    possible improvements
-    ---------------------
+    possible improvements:
 
      - keep the current asking uid for checking if
        the peer don't respond to an other message.
+       e.g.
+
+        - if a hello message is sent at time 0.
+        - an other hello message is sent at time 5 because the peer doesn't respond
+        - the peer responds to the first hello message at time 6.
+        - in the current implementation, the metric will be 1 (6-5) but the real
+          metric should be 6 (6-0)
 
     GET_NEIGHBOURS_AVAILABLE provides :
-    -----------------------------------
 
     - get_neighbour_metric(neighbour)
     - get_neighbours()
@@ -195,6 +203,7 @@ class Hellos:
     def validate(self, context):
         """
         When all requirements are satisfied
+
         :param context:
         :return: nothing
         """
@@ -210,6 +219,7 @@ class Hellos:
     def invalidate(self, context):
         """
         when some requirements are unsatisfied
+
         :param context:
         :return: nothing
         """
@@ -221,6 +231,7 @@ class Hellos:
     def _extract_info_from_reply(self, peer_uid, subject):
         """
         extract from a message content informations about peer
+
         :param peer_uid: sender uid
         :param subject: message subject
         :return: nothing
@@ -256,9 +267,11 @@ class Hellos:
     def get_neighbour_metric(self, neighbour):
         """
         returns a neighbour metric
+
         :param neighbour: given neighbour
         :return: known metric (latency) from neighbour
             None if there is no connection
+
         """
         # if we know a metric for the neighbour
         if neighbour in self._neighbours.neighbours_set(field='metric'):
@@ -273,9 +286,8 @@ class Hellos:
     def get_neighbours(self):
         """
         returns all the information known about neighbours
-        :return: a set object with neighbour UID
 
-        potential bug: return value is a reference with an internal object.
+        :return: a set object with neighbour UID
         """
         return self._neighbours.neighbours_set(field='metric')
 
@@ -304,6 +316,7 @@ class Hellos:
     def _send_hello(self, target, msg):
         """
         Send a message to a given target
+
         :param target: target for the message
         :param msg: message to send
         :return: nothing
@@ -319,6 +332,7 @@ class Hellos:
         change the metric of a given pair for a given value.
         It changes the value if it's greater than _hello_timeout
         or if the absolute difference is greater than _granularity.
+
         :param peer_uid: peer to set the metric
         :param new_value: new metric value
         :return: nothing
@@ -334,6 +348,7 @@ class Hellos:
     def set_not_reachable(self, peer_uid):
         """
         set a pair not reachable in neighbourhood.
+
         :param peer_uid: peer to set
         :return: nothing
         """
@@ -343,6 +358,7 @@ class Hellos:
     def _time_between(old_time):
         """
         return time in seconds between old time and now
+
         :param old_time: time to check with now
         :return: difference of time
         """
@@ -353,6 +369,7 @@ class Hellos:
         main loop of the hellos sender daemon.
         It stops when the _active method is set to false
         and the current iteration is over.
+
         :return: nothing
         """
         while self._active:

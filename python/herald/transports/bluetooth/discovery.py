@@ -58,6 +58,13 @@ _logger = logging.getLogger(__name__)
 class Discovery:
     """
     A simple component that asks for a remote service each time interval
+
+    provides:
+        - herald.transports.bluetooth.BLUETOOTH_DISCOVERY_SERVICE
+
+    properties:
+        - discovery_duration
+        - filter
     """
 
     def __init__(self):
@@ -76,8 +83,10 @@ class Discovery:
     def validate(self, _):
         """
         when all the requirements are satisfied.
+
         :param _: context
         :return: nothing
+
         """
         self._add_listeners = []
         self._devices_names = dict()
@@ -90,8 +99,10 @@ class Discovery:
     def invalidate(self, _):
         """
         when some requirements are unsatisfied
+
         :param _: context
         :return: nothing
+
         """
         self._active = False
         self._thread.join()
@@ -99,8 +110,10 @@ class Discovery:
     def listen_new(self, f):
         """
         add a listener for new elements
+
         :param f: callback with a mac parameter
         :return: nothing
+
         """
         self._add_listeners.append(f)
 
@@ -108,9 +121,11 @@ class Discovery:
         """
         checks differences between old and new neighbourhood.
         launch listener call if some peers showed up
+
         :param old: old peer set
         :param new: new peer set
         :return: nothing
+
         """
         for i in new.difference(old):
             for f in self._add_listeners:
@@ -119,8 +134,10 @@ class Discovery:
     def delete_mac(self, mac):
         """
         deletes a mac from the known devices
+
         :param mac: mac address
         :return: nothing
+
         """
         if mac in self._devices_names:
             del self._devices_names[mac]

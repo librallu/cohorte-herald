@@ -26,6 +26,8 @@ Herald Bluetooth Message Implementation
     limitations under the License.
 """
 
+from uuid import uuid4
+
 DELIMITER = ':'
 HELLO_MESSAGE = b'[[[HELLO]]]'
 
@@ -35,8 +37,10 @@ def to_string(msg):
     Take a str and returns the same object
     or take a bytes object and transform it
     to a string object (useful for comparisons)
+
     :param msg: message to transform to a string
     :return: resulted string
+
     """
     if type(msg) is bytes:
         msg = str(msg)
@@ -50,13 +54,20 @@ def to_bluetooth_message(msg):
     """
     put a bluetooth message to the peer.
     It adds correct delimiters
+
     :param msg: string message
     :return: bluetooth message as a string
+
     """
     msg = to_string(msg)
-    msg = msg.replace('\n', '')
-    print('BLUETOOTH MESSAGE : '+str(len(str(msg))) + DELIMITER + msg)
-    return str(len(str(msg))) + DELIMITER + msg
+    return str(len(msg)) + DELIMITER + msg
+
+
+def gen_uuid():
+    """
+    :return: uuid of a message 32 random hexadecimal chars
+    """
+    return str(uuid4())
 
 
 class MessageReader:
@@ -70,20 +81,28 @@ class MessageReader:
         self._hello_received_callback = hello_callback
 
     def read(self):
+        """
+        reads from automata to extract SerialHeraldMessages
+
+        :return: SerialHeraldMessage if there are any, None elsewhere
+
+        """
         if self._automata.any_message():
             msg = self._automata.get_message()
             # if there is a hello message
-            if len(self._buffer) == 0:
-                # if we are not into reading a new herald message
-                if to_string(msg) == to_string(HELLO_MESSAGE):
-                    # call the hello received callback
-                    if self._hello_received_callback:
-                        self._hello_received_callback()
-                    # exiting before continuing in the
-                    # creation of an herald message
-                    return None
+            # if len(self._buffer) == 0:
+            # if we are not into reading a new herald message
+            if to_string(msg) == to_string(HELLO_MESSAGE):
+                # call the hello received callback
+                if self._hello_received_callback:
+                    self._hello_received_callback()
+                # exiting before continuing in the
+                # creation of an herald message
+                return None
             self._buffer.append(msg)
-            if len(self._buffer) >= 7:
+            print('READER BUFFER: {}'.format(self._buffer))
+            print('BUFFER LEN: {}'.format(len(self._buffer)))
+            if len(self._buffer) >= 8:
                 res = SerialHeraldMessage(*self._buffer)
                 self._buffer.clear()
                 return res
@@ -102,7 +121,8 @@ class SerialHeraldMessage:
                  final_destination,
                  content,
                  reply_to='',
-                 message_uid=''):
+                 message_uid='',
+                 group=''):
         self._subject = to_string(subject)
         self._sender_uid = to_string(sender_uid)
         self._original_sender = to_string(original_sender)
@@ -110,9 +130,11 @@ class SerialHeraldMessage:
         self._content = to_string(content)
         self._reply_to = to_string(reply_to)
         self._message_uid = to_string(message_uid)
+        if self._message_uid == '':
+            self._message_uid = gen_uuid()
+        self._group = group
 
     def to_automata_string(self):
-        print('SENDING: {}'.format(self.__str__()))
         res = ''
         res += to_bluetooth_message(self.subject)
         res += to_bluetooth_message(self.sender_uid)
@@ -121,6 +143,7 @@ class SerialHeraldMessage:
         res += to_bluetooth_message(self.content)
         res += to_bluetooth_message(self.reply_to)
         res += to_bluetooth_message(self.message_uid)
+        res += to_bluetooth_message(self.group)
         return res
 
     @property
@@ -151,6 +174,10 @@ class SerialHeraldMessage:
     def message_uid(self):
         return self._message_uid
 
+    @property
+    def group(self):
+        return self._group
+
     def set_uid(self, new_uid):
         self._message_uid = new_uid
 
@@ -166,9 +193,10 @@ class SerialHeraldMessage:
         original sender: {}
         final destination: {}
         replies to: {}
+        group: {}
         -------------------
         {}
         -------------------
         """.format(self.message_uid, self.subject, self.sender_uid,
                    self.original_sender, self.final_destination, self.reply_to,
-                   self.content)
+                   self.group, self.content)
