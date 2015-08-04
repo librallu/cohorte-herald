@@ -4,7 +4,7 @@ from uuid import uuid4
 
 a = SerialAutomata()
 reader=MessageReader(a)
-mi = SerialHeraldMessage('a', 'b', 'c', 'd', 'e', reply_to='nope')
+mi = SerialHeraldMessage('a', 'b', 'c', 'd', 'e', reply_to='nope', group='all')
 mi.set_uid(str(uuid4()))
 print(mi)
 print(mi.to_automata_string())

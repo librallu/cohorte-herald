@@ -1,28 +1,4 @@
-"""
-Main application on PyBoard
 
-:author: Luc Libralesso
-:copyright: Copyright 2014, isandlaTech
-:license: Apache License 2.0
-:version: 0.0.3
-:status: Alpha
-
-..
-
-    Copyright 2014 isandlaTech
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-"""
 import pyb
 from ipopo import *
 from xmlrpc import *
@@ -49,7 +25,7 @@ automata = automata.SerialAutomata()
 def get_message_uart():
     """
     :return: new message as a string from uart, None if
-    there are no new messages
+        there are no new messages
     """
     if uart.any():
         message = to_string(uart.read())
@@ -63,8 +39,10 @@ def get_message_uart():
 def set_led(value):
     """
     set the led to a given value
+
     :param value: True for ON, False for OFF
     :return: None
+
     """
     if value:
         pyb.Pin(led_pin, pyb.Pin.OUT_PP).high()
@@ -85,8 +63,10 @@ def put_message(message, encapsulate=True):
     It doesn't add delimiters because
     it is supposed to be done by the
     Reader object.
+
     :param message: string message
     :return: None
+
     """
     output = to_string(message)
     if encapsulate:
@@ -99,7 +79,9 @@ def hello_callback():
     """
     called when a hello message appears.
     It will simply send back a hello message
+
     :return: Nothing
+
     """
     put_message(HELLO_MESSAGE)
 
@@ -107,8 +89,10 @@ def hello_callback():
 def compress_msg(message, no_spaces=False):
     """
     removes new lines, tabs and spaces in a message
+
     :param message: message to be compressed
     :return: new message (compressed)
+
     """
     message = message.replace('\n', '')
     message = message.replace('\t', '')
@@ -145,7 +129,7 @@ def get_step2_response(request):
     ).to_automata_string()
 
 
-def get_step3_response(request):
+def get_step3_response(request, group='all'):
     """
     :param request: SerialHeraldMessage object of the request
     :return: step3 response (SerialHeraldMessage object)
@@ -157,14 +141,22 @@ def get_step3_response(request):
     content = str(res)
     content = compress_msg(content)
 
+    subject = 'herald/rpc/discovery/add'
+
     return SerialHeraldMessage(
-        subject='herald/rpc/discovery/add',
+        subject=subject,
         sender_uid=uid,
         original_sender=uid,
         final_destination=request.original_sender,
         content=content,
-        reply_to=request.message_uid
+        reply_to=request.message_uid,
+        group=group
     ).to_automata_string()
+
+
+def get_contact_answer(request):
+    # TODO add services exported by peer
+    return get_step3_response(request)
 
 
 def get_rpc_answer(request):
@@ -196,6 +188,7 @@ def get_rpc_answer(request):
     ).to_automata_string()
 
 
+
 def get_routing_answer(request):
     """
     :param request: SerialHeraldMessage object of the routing hello request
@@ -215,8 +208,10 @@ def manage_message(message):
     """
     Extract useful information in the message
     and do something if necessary
+
     :param message: message received
     :return: Nothing
+
     """
     print('herald message received:')
     print(message)
@@ -233,6 +228,10 @@ def manage_message(message):
     elif to_string(message.subject) == to_string('herald/routing/hello/'):
         print('** RESPONDING TO ROUTING HELLO MESSAGE')
         put_message(get_routing_answer(message), encapsulate=False)
+    elif to_string(message.subject) == to_string('herald/rpc/discovery/add'):
+        put_message(get_contact_answer(message), encapsulate=False)
+    elif to_string(message.subject) == to_string('herald/rpc/discovery/contact'):
+        put_message(get_contact_answer(message), encapsulate=False)
     else:
         print('** UNMATCHED MESSAGE: {}'.format(message.subject))
 
@@ -241,6 +240,9 @@ def manage_message(message):
 reader = MessageReader(automata, hello_callback)
 
 def extract_herald_message():
+    """
+    :return: new herald message if any, None elsewhere
+    """
     # get message from uart
     new_message = get_message_uart()
     if new_message:
@@ -251,6 +253,9 @@ def extract_herald_message():
 
 
 def main():
+    """
+    main loop of microNode
+    """
 
     # creating internal state of pyboard
     print('iPOPO initialization')
@@ -266,4 +271,5 @@ def main():
             manage_message(msg)
 
 
-main()
+if __name__ == '__main__':
+    main()

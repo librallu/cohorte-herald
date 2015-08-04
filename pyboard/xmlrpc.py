@@ -4,8 +4,10 @@ def extract_answer(xml_string):
     """
     parse xml_string representing herald xmlrpc response
     and extract int and string arguments.
+
     :param xml_string: input string
     :return: list of parsed values (int or string)
+
     """
     values = xml_string.split('<value>')
     typed_values = [i.split('</value>')[0] for
@@ -24,8 +26,10 @@ def extract_answer(xml_string):
 def create_answer(value_list):
     """
     generate xml string for the answer
+
     :param value_list: input list of values
     :return: generated xml string
+
     """
     if value_list is None:
         value_list = []
@@ -44,12 +48,8 @@ def create_answer(value_list):
 def extract_request_info(request_content):
     """
     extract information from request
-    :param request_content: content of the request
-    :return: tuple (a,b)
-        - a: method name
-        - b: list of args
 
-    examples:
+        examples:
         <?xml version='1.0'?>
         <methodCall>
             <methodName>service_29.ping</methodName>
@@ -60,6 +60,11 @@ def extract_request_info(request_content):
         </methodCall>
 
         returns (service_29.ping, [42])
+
+    :param request_content: content of the request
+    :return: tuple (a,b)
+        - a: method name
+        - b: list of args
     """
     method = request_content.split('<methodName>')[1].split('</methodName>')[0]
     values = request_content.split('<value>')
@@ -75,8 +80,12 @@ def extract_request_info(request_content):
     return method, res
 
 
-
 def create_request(request_info):
+    """
+    create request string in xml with request info parameter
+    :param request_info: request information (methodName, argument value list)
+    :return: xml string
+    """
     res = "<?xml version='1.0'?>"
     res += "<methodCall>"
     res += "<methodName>{}</methodName>".format(request_info[0])
@@ -94,21 +103,21 @@ def create_request(request_info):
 
 
 if __name__ == '__main__':
-    # s1 = """
-    # <?xml version='1.0'?>
-    #     <methodResponse>
-    #     <params>
-    #         <param>
-    #             <value><int>78</int></value>
-    #         </param>
-    #         <param>
-    #             <value><string>hello world !</string></value>
-    #         </param>
-    #     </params>
-    # </methodResponse>"""
-    # print(extract_answer(s1))
-    # print(create_answer(extract_answer(s1)))
-    # print(create_request(('hello', ['hello', 42])))
+    s1 = """
+    <?xml version='1.0'?>
+        <methodResponse>
+        <params>
+            <param>
+                <value><int>78</int></value>
+            </param>
+            <param>
+                <value><string>hello world !</string></value>
+            </param>
+        </params>
+    </methodResponse>"""
+    print(extract_answer(s1))
+    print(create_answer(extract_answer(s1)))
+    print(create_request(('hello', ['hello', 42])))
     s2 = """
         <?xml version='1.0'?>
         <methodCall>

@@ -95,7 +95,7 @@ class MessageReader:
             self._buffer.append(msg)
             print('READER BUFFER: {}'.format(self._buffer))
             print('BUFFER LEN: {}'.format(len(self._buffer)))
-            if len(self._buffer) >= 7:
+            if len(self._buffer) >= 8:
                 res = SerialHeraldMessage(*self._buffer)
                 self._buffer.clear()
                 return res
@@ -114,7 +114,8 @@ class SerialHeraldMessage:
                  final_destination,
                  content,
                  reply_to='',
-                 message_uid=''):
+                 message_uid='',
+                 group=''):
         self._subject = to_string(subject)
         self._sender_uid = to_string(sender_uid)
         self._original_sender = to_string(original_sender)
@@ -124,6 +125,7 @@ class SerialHeraldMessage:
         self._message_uid = to_string(message_uid)
         if self._message_uid == '':
             self._message_uid = gen_uuid()
+        self._group = group
 
     def to_automata_string(self):
         res = ''
@@ -134,6 +136,7 @@ class SerialHeraldMessage:
         res += to_bluetooth_message(self.content)
         res += to_bluetooth_message(self.reply_to)
         res += to_bluetooth_message(self.message_uid)
+        res += to_bluetooth_message(self.group)
         return res
 
     @property
@@ -164,6 +167,10 @@ class SerialHeraldMessage:
     def message_uid(self):
         return self._message_uid
 
+    @property
+    def group(self):
+        return self._group
+
     def set_uid(self, new_uid):
         self._message_uid = new_uid
 
@@ -179,9 +186,10 @@ class SerialHeraldMessage:
         original sender: {}
         final destination: {}
         replies to: {}
+        group: {}
         -------------------
         {}
         -------------------
         """.format(self.message_uid, self.subject, self.sender_uid,
                    self.original_sender, self.final_destination, self.reply_to,
-                   self.content)
+                   self.group, self.content)

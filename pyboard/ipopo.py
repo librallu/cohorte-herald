@@ -1,5 +1,5 @@
 import pyb  # for randomness
-from xmlrpc import create_answer
+import xmlrpc
 """
 A component can have following decorators :
 
@@ -13,10 +13,6 @@ A component can have following decorators :
 Components are represented by classes with methods in it.
 
 Services are represented by strings.
-
-TODO:
-
- - add methods/attributes in object for require & property
 
 """
 
@@ -45,13 +41,15 @@ class ObservableSet:
     def add_listener_add(self, f):
         """
         :param f: function that take an
-        element in parameter
+            element in parameter
+
         """
         self._listeners_add.add(f)
 
     def add(self, value):
         """
         add value to add to the dict
+
         :param value: value to add
         """
         for f in self._listeners_add:
@@ -61,7 +59,8 @@ class ObservableSet:
     def add_listener_del(self, f):
         """
         :param f: function that take an
-        element in parameter
+            element in parameter
+
         """
         self._listeners_del.add(f)
 
@@ -94,6 +93,12 @@ _internal_services = {}
 
 
 def get_name(input_class):
+    """
+    return component name from a python class
+
+    :param input_class: python class
+    :return: component name
+    """
     try:
         return input_class.ipopo_component_name
     except AttributeError:
@@ -106,10 +111,12 @@ def get_name(input_class):
 def ComponentFactory(factory_name):
     """
     adds a field _ipopo_factory_name with name in the component.
+
     :param factory_name: name of the factory
+
     """
     def class_builder(original_class):
-        print('componentFactory call {}'.format(_ipopo_explorer))
+        # print('componentFactory call {}'.format(_ipopo_explorer))
         new_class = original_class
         name = get_name(new_class)
 
@@ -140,8 +147,9 @@ def ComponentFactory(factory_name):
 def Instantiate(name):
     """
     instantiate component as name
-    :param name:
-    :return:
+
+    :param name: name of component
+
     """
     def class_builder(original_class):
         new_class = original_class
@@ -165,12 +173,24 @@ def Instantiate(name):
 
 
 def Validate(function):
+    """
+    tells that the function is the component validate function
+
+    :param function: input function
+
+    """
     print('validate call')
     _ipopo_explorer['validate'] = function
     return function
 
 
 def Invalidate(function):
+    """
+    tells that the function is the component invalidate function
+
+    :param function: input function
+
+    """
     _ipopo_explorer['invalidate'] = function
     return function
 
@@ -179,9 +199,9 @@ def Provides(service):
     """
     adds field _ipopo_internal_services with a set of services
     provided.
-    It will also add
-    :param service:
-    :return:
+
+    :param service: Service to provide
+
     """
     def class_builder(original_class):
         global _id_counter
@@ -205,6 +225,14 @@ def Provides(service):
 
 
 def Requires(variable_name, service_name, optional=False):
+    """
+    Tells that the component requires other services to run
+
+    :param variable_name: variable to be injected
+    :param service_name: name of the service
+    :param optional: if True, component don't need service
+
+    """
     def class_builder(original_class):
         new_class = original_class
         name = get_name(new_class)
@@ -217,6 +245,14 @@ def Requires(variable_name, service_name, optional=False):
 
 
 def Property(variable, prop_name, value):
+    """
+    Tells that the component have the property
+
+    :param variable: variable name
+    :param prop_name: property name
+    :param value: initial value of the variable
+
+    """
     def class_builder(original_class):
         new_class = original_class
         name = get_name(new_class)
@@ -229,6 +265,12 @@ def Property(variable, prop_name, value):
 
 
 def service_name_from_id(id):
+    """
+    return the service name from it's id
+
+    :param id: service id
+    :return: service name
+    """
     for i in _internal_services:
         if _internal_services[i] == id:
             return i
@@ -286,13 +328,17 @@ def ipopo_exported():
     return res
 
 def get_local_service_id(service):
+    """
+    return id from service name
+    :param service: service name
+    :return: service id
+    """
     return _internal_services[service]
 
 class RemoteObject:
     """
     Represents a remote object and make messages in the network to call them
     then waits for the response.
-    :return:
     """
 
     def __init__(self):
@@ -307,7 +353,7 @@ class RemoteObject:
 def gen_node_uid():
     """
     :return: string representing the node UID of the pyboard
-    Format like "f07569ba-77ab-4f01-a041-c86c6b58c3cd"
+        Format like "f07569ba-77ab-4f01-a041-c86c6b58c3cd"
     """
 
     def gen_rand_hexa():
@@ -328,6 +374,14 @@ def gen_node_uid():
 
 
 def service_rpc_string(service, uid):
+    """
+    return service prc string
+
+    :param service: service name
+    :param uid: uid of microNode
+    :return: rpc string
+
+    """
     return {
         'specifications': ['python:/'+service],
         'peer': '{}'.format(uid),
@@ -352,9 +406,11 @@ def service_rpc_string(service, uid):
 def call_service(service_string, params=[]):
     """
     Calls a service available from the service string
+
     :param service_string: example: "service_29.ping"
     :param params: parameter list for call
     :return: XML string for result
+
     """
     string_start = service_string.split('.')[0]
     service_id = int(string_start.split('_')[1])
@@ -370,7 +426,7 @@ def call_service(service_string, params=[]):
         if method in dir(required_component):
             # result = getattr(required_component, method)(required_component, *params)
             result = getattr(required_component, method)(*params)
-            return create_answer(result)
+            return xmlrpc.create_answer(result)
         else:
             print('error: component does not have method {}'.format(method))
     else:
