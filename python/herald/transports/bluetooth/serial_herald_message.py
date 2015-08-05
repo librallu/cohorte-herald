@@ -100,8 +100,6 @@ class MessageReader:
                 # creation of an herald message
                 return None
             self._buffer.append(msg)
-            print('READER BUFFER: {}'.format(self._buffer))
-            print('BUFFER LEN: {}'.format(len(self._buffer)))
             if len(self._buffer) >= 8:
                 res = SerialHeraldMessage(*self._buffer)
                 self._buffer.clear()

@@ -132,9 +132,10 @@ class BluetoothManager:
             )
             res.add_header(herald.MESSAGE_HEADER_SENDER_UID, msg.sender_uid)
             res.add_header(herald.MESSAGE_HEADER_UID, msg.message_uid)
-            res.add_header("original_sender", msg.original_sender)
-            if msg.final_destination:
-                res.add_header("final_destination", msg.final_destination)
+
+        res.add_header("original_sender", msg.original_sender)
+        if msg.final_destination:
+            res.add_header("final_destination", msg.final_destination)
 
         if msg.group:
             print('BLUETOOTH MANAGER RECEIVES A BROADCAST')

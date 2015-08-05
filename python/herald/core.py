@@ -444,7 +444,7 @@ class Herald(object):
         print('-----')
         print(message.content)
         print('-----')
-        print("target : {}".format(message.get_header('final_destination')))
+        print("target : {}".format(self._extract_target(message)))
         with self.__gc_lock:
             if message.uid in self.__treated:
                 # Message already handled, maybe it has been received by
@@ -497,6 +497,15 @@ class Herald(object):
         """
         return self._routing is not None
 
+    def _get_group(self, message):
+        """
+        returns group for the message
+
+        :param message: message to extract the group from
+        :return: string representing the group. None if any
+        """
+        return message.get_header('group')
+
     def _is_destination(self, message):
         """
         :param message: message to check
@@ -507,7 +516,9 @@ class Herald(object):
         # note that self._directory.local_uid == target is not necessary here
         # we keep it because it can be useful if we send messages from
         # a non application isolate.
-        return target is None or self._directory.local_uid == target
+        return target is None or \
+               self._directory.local_uid == target or \
+               self._get_group(message)
 
     @staticmethod
     def _add_destination(message, destination):
