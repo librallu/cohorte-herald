@@ -8,4 +8,7 @@ setup(name='Cohorte Micronode',
       author_email='libralesso.l@gmail.com',
       license='Apache License 2.0',
       packages=[],
+      install_requires=[
+	'pybluez',
+      ],
       zip_safe=False)
