@@ -259,9 +259,9 @@ def main():
 
     # creating internal state of pyboard
     print('iPOPO initialization')
-    # while True:
-    #     print_ipopo_state()
-    #     pyb.delay(2000)
+    while True:
+        print_ipopo_state()
+        pyb.delay(2000)
 
     # main loop
     print('starting main loop')

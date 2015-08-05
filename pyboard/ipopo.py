@@ -16,68 +16,13 @@ Services are represented by strings.
 
 """
 
-# ===== INTERNAL CLASSES =====
-
-class ObservableSet:
-    """
-    Represents a set object that can
-    notify callbacks when a change occurs.
-    """
-
-    def __init__(self):
-        self._data = set()
-        self._listeners_add = set()
-        self._listeners_del = set()
-
-    def __repr__(self):
-        return str(self._data)
-
-    def __iter__(self):
-        return iter(self._data)
-
-    def __contains__(self, elt):
-        return elt in self._data
-
-    def add_listener_add(self, f):
-        """
-        :param f: function that take an
-            element in parameter
-
-        """
-        self._listeners_add.add(f)
-
-    def add(self, value):
-        """
-        add value to add to the dict
-
-        :param value: value to add
-        """
-        for f in self._listeners_add:
-            f(value)
-        self._data.add(value)
-
-    def add_listener_del(self, f):
-        """
-        :param f: function that take an
-            element in parameter
-
-        """
-        self._listeners_del.add(f)
-
-    def remove(self, value):
-        """
-        :param value: delete value from dict
-        """
-        for f in self._listeners_del:
-            f(value)
-        self._data.remove(value)
 
 
 # ===== GLOBAL VARIABLES =====
 
 # services provided in the application
-_external_services = ObservableSet()
-# _external_services = set()
+# external service name -> Peer UUID list
+_external_services = {}
 
 # component name -> class
 _class_binding = {}
@@ -104,6 +49,106 @@ def get_name(input_class):
     except AttributeError:
         raise Exception('ERROR inspecting component : \
         Are you sure that you used the decorator @Instantiate when declaring your component ?')
+
+
+def get_external_service_uuid(name):
+    """
+    get an external service provider for name
+
+    :param name: service name
+    :return: peer uuid providing the service, None elsewhere
+    """
+    if name in _external_services:
+        return _external_services[name][0]
+    else:
+        return None
+
+
+def get_provided_services():
+    res = []
+    for name in _component_info:
+        if _component_info[name]['active']:
+            for i in _component_info[name]['provides']:
+                res.append(service_name_from_id(i))
+    return res
+
+def get_best_service_provider(name):
+    """
+    return the best service provider for a service name
+
+    :param name: service name
+    :return: best service provider uuid
+
+        - 'local' if provided in local
+        - UUID string if external service
+        - None if there is no known service provider
+    """
+    if name in get_provided_services():
+        return 'local'
+    else:
+        return get_external_service_uuid(name)
+
+
+def add_service(service, provider):
+    """
+    adds a service provided by an external peer
+
+    :param service: service provided
+    :param provider: service provier
+    :return: True if added, False if it already exists
+    """
+    if service in _external_services:
+        if provider not in _external_services[service]:
+            _external_services[service].append(provider)
+        else:
+            return False
+    else:
+        _external_services[service] = [provider]
+
+    # TODO in this case check if some components can start
+    for name in _component_info:
+        if not _component_info[name]['active']:
+            for req in _component_info[name]['requires']:
+                if req[1] == service:
+                    print('add_service leads to a component starting test {}'.format(name))
+                    start_component(name)
+    return True
+
+
+def start_component(name):
+    """
+    starts the component with name name if possible.
+
+    :param name: name of the component
+    :return: True if the component is started, False elsewhere
+
+    """
+    # For each require in the component info
+    for require in _component_info[name]['requires']:
+        # if the require is not optional
+        if not require[2]:
+            # if the require is not satisfied
+            # stop the process because some requires are missing
+            if not get_best_service_provider(require[1]):
+                return False
+
+    _component_info[name]['active'] = True
+
+    # add properties to the component
+    for prop in _component_info[name]['property']:
+        # _class_binding[name].prop[0] = prop[2]
+        setattr(_class_binding[name], prop[0], prop[2])
+
+    # add required fields if needed
+    for req in _component_info[name]['requires']:
+        setattr(_class_binding[name], req[0], RemoteObject(req[1]))
+
+    # call validate
+    _component_info[name]['validate'](_class_binding[name])
+
+    print('component {} started'.format(name))
+    return True
+
 
 # ===== DECORATORS =====
 
@@ -138,8 +183,8 @@ def ComponentFactory(factory_name):
         _component_info[name]['validate'] = _ipopo_explorer.get('validate', None)
         _component_info[name]['invalidate'] = _ipopo_explorer.get('invalidate', None)
 
-        if len(_component_info[name]['requires']) == 0:
-            _component_info[name]['active'] = True
+        start_component(name)
+
         return new_class
     return class_builder
 
@@ -179,7 +224,6 @@ def Validate(function):
     :param function: input function
 
     """
-    print('validate call')
     _ipopo_explorer['validate'] = function
     return function
 
@@ -341,12 +385,17 @@ class RemoteObject:
     then waits for the response.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, service_name):
+        self.service_name = service_name
 
     def __getattr__(self, item):
         def foo(*args, **kwargs):
-            print('{} called with parameters {}, {}'.format(item, args, kwargs))
+            print('{}->{}: {} called with parameters {}, {}'.format(
+                self.service_name,
+                get_best_service_provider(self.service_name),
+                item,
+                args,
+                kwargs))
         return foo
 
 

@@ -1,4 +1,4 @@
-from ipopo import ComponentFactory, Provides, \
+from ipopo import ComponentFactory, Provides, Requires, \
     Validate, Invalidate, Instantiate, Property
 
 import pyb
@@ -57,7 +57,7 @@ class Led:
         """
         :return: name property
         """
-        return self.get_name
+        return self._name
 
     def get_state(self):
         """
@@ -91,3 +91,27 @@ class Led:
             self.off()
         else:
             self.on()
+
+
+@ComponentFactory('sensor-pyboard-factory')
+@Property('_name', 'sensor.name', 'pyboard sensor')
+@Requires('_storage', 'sensor.generic.storage')
+@Instantiate('sensor.services.sensorService')
+class GenericSensor:
+    """
+    Generic sensor for the pyboard.
+
+    It allows to send values to a storage service
+
+    """
+
+    def __init__(self):
+        pass
+
+    @Validate
+    def validate(self):
+        print('======= VALIDATE ========')
+
+    @Invalidate
+    def invalidate(self):
+        print('======= INVALIDATE =======')
