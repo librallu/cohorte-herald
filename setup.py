@@ -10,5 +10,6 @@ setup(name='Cohorte Micronode',
       packages=[],
       install_requires=[
 	'pybluez',
+	'ipopo',
       ],
       zip_safe=False)
