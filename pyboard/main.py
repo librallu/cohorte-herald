@@ -1,7 +1,7 @@
 
 import pyb
-from ipopo import *
-from xmlrpc import *
+import ipopo
+import xmlrpc
 
 # automata import
 import automata
@@ -15,7 +15,7 @@ from components import *
 uart = pyb.UART(1, 38400)
 
 # define node uid for the pyboard
-uid = gen_node_uid()
+uid = ipopo.gen_node_uid()
 # use mac address of the bluetooth module (fixed)
 mac = '20:14:03:19:88:23'
 # automata for reading bluetooth flow
@@ -135,9 +135,9 @@ def get_step3_response(request, group='all'):
     :return: step3 response (SerialHeraldMessage object)
     """
     res = []
-    for service in ipopo_exported():
-        service_name = service_name_from_id(service)
-        res.append(service_rpc_string(service_name, uid))
+    for service in ipopo.ipopo_exported():
+        service_name = ipopo.service_name_from_id(service)
+        res.append(ipopo.service_rpc_string(service_name, uid))
     content = str(res)
     content = compress_msg(content)
 
@@ -156,7 +156,7 @@ def get_step3_response(request, group='all'):
 
 def get_contact_answer(request):
     # TODO add services exported by peer
-    print('RPC: got {}'.format(extract_service_description(request.content)))
+    print('RPC: got {}'.format(xmlrpc.extract_service_description(request.content)))
     return get_step3_response(request)
 
 
@@ -175,7 +175,7 @@ def get_rpc_answer(request):
     #     </params>
     # </methodResponse>
     # '''
-    content = call_service(*extract_request_info(request.content))
+    content = ipopo.call_service(*xmlrpc.extract_request_info(request.content))
     print("responding request with {}".format(content))
     content = compress_msg(content, no_spaces=True)
 
@@ -275,7 +275,7 @@ def main():
     # creating internal state of pyboard
     print('iPOPO initialization')
     while True:
-        print_ipopo_state()
+        ipopo.print_ipopo_state()
         pyb.delay(2000)
 
     # main loop

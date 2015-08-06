@@ -1,6 +1,6 @@
 import pyb  # for randomness
 import xmlrpc
-from main import wait_from_message
+from main import wait_for_message
 """
 A component can have following decorators :
 
@@ -507,11 +507,13 @@ class RemoteObject:
             # send the request through micro herald
             # if it receives other message, send it to herald
             # wait to receive the answer
-            xml_answer = wait_from_message(checker)
+            def checker(msg):
+                return True
+
+            xml_answer = wait_for_message(checker)
 
             # extract the answer
             return xmlrpc.extract_answer(xml_answer)
-
 
             print('{}: {} called with parameters {}, {}'.format(
                 self.service_provider,
