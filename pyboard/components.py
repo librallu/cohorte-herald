@@ -92,26 +92,26 @@ class Led:
         else:
             self.on()
 
-
-@ComponentFactory('sensor-pyboard-factory')
-@Property('_name', 'sensor.name', 'pyboard sensor')
-@Requires('_storage', 'sensor.generic.storage')
-@Instantiate('sensor.services.sensorService')
-class GenericSensor:
-    """
-    Generic sensor for the pyboard.
-
-    It allows to send values to a storage service
-
-    """
-
-    def __init__(self):
-        pass
-
-    @Validate
-    def validate(self):
-        print('======= VALIDATE ========')
-
-    @Invalidate
-    def invalidate(self):
-        print('======= INVALIDATE =======')
+#
+# @ComponentFactory('sensor-pyboard-factory')
+# @Property('_name', 'sensor.name', 'pyboard sensor')
+# @Requires('_storage', 'sensor.generic.storage')
+# @Instantiate('sensor.services.sensorService')
+# class GenericSensor:
+#     """
+#     Generic sensor for the pyboard.
+#
+#     It allows to send values to a storage service
+#
+#     """
+#
+#     def __init__(self):
+#         pass
+#
+#     @Validate
+#     def validate(self):
+#         print('======= VALIDATE ========')
+#
+#     @Invalidate
+#     def invalidate(self):
+#         print('======= INVALIDATE =======')

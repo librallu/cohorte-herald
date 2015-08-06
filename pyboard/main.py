@@ -156,6 +156,7 @@ def get_step3_response(request, group='all'):
 
 def get_contact_answer(request):
     # TODO add services exported by peer
+    print('RPC: got {}'.format(extract_service_description(request.content)))
     return get_step3_response(request)
 
 
@@ -250,6 +251,20 @@ def extract_herald_message():
     # pass it to the message reader
     msg = reader.read()
     return msg
+
+
+def wait_for_message(message_checker):
+    """
+    blocking call to get a message
+    :return: message received
+    """
+    while True:
+        msg = extract_herald_message()
+        if message_checker(msg):
+            return msg
+        elif msg:
+            print("-- MANAGE MESSAGE PASS MESSAGE"+msg)
+            manage_message(msg)
 
 
 def main():

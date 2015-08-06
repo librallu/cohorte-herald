@@ -102,6 +102,27 @@ def create_request(request_info):
     return res
 
 
+def extract_service_description(content_string):
+    """
+    extracts content from string received with a service
+    description message
+
+    :param content_string:
+    :return:
+    """
+    content_object = eval(content_string)
+    res = []
+    for i in content_object:
+        res.append(
+            {
+                'uuid': i['uid'],
+                'spec': i['properties']['objectClass'][0],
+                'name': i['name']
+            }
+        )
+    return res
+
+
 if __name__ == '__main__':
     s1 = """
     <?xml version='1.0'?>
@@ -129,3 +150,10 @@ if __name__ == '__main__':
         </methodCall>
     """
     print(extract_request_info(s2))
+
+    mac="ADRESSE MAC"
+    uid="DISTANT UID"
+
+    content = """[{'uid':'86006913-0197-56a2-d8f7-0e490f54617a','properties':{'service.ranking':0,'herald.rpc.subject':'herald/rpc/xmlrpc','objectClass':['pyboard.led.ledService'],'herald.rpc.peer':'86006913-0197-56a2-d8f7-0e490f54617a','instance.name':'pyboard.led.ledService','service.imported':True,'service.imported.configs':('herald-xmlrpc',),'endpoint.framework.uuid':'86006913-0197-56a2-d8f7-0e490f54617a','endpoint.service.id':0},'name':'service_0','specifications':['python:/pyboard.led.ledService'],'configurations':('herald-xmlrpc',),'peer':'86006913-0197-56a2-d8f7-0e490f54617a'}]"""
+
+    print(extract_service_description(content))

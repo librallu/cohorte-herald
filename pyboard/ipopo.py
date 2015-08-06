@@ -1,11 +1,14 @@
 import pyb  # for randomness
 import xmlrpc
+from main import wait_from_message
 """
 A component can have following decorators :
 
 - componentFactory : indicates the name of the component
 - validate method : called when the component is valid
 - invalidate method : called when the component is invalid
+- BindField : called when a field is bound (used when a component have a require optional)
+- UnbindField : called when a field is unbound (used when a component have a require optional)
 - provides : provides a service
 - requires : requires a service for being validated
 - property : defines a property for the service
@@ -94,7 +97,7 @@ def add_service(service, provider):
     adds a service provided by an external peer
 
     :param service: service provided
-    :param provider: service provier
+    :param provider: service provider
     :return: True if added, False if it already exists
     """
     if service in _external_services:
@@ -105,13 +108,77 @@ def add_service(service, provider):
     else:
         _external_services[service] = [provider]
 
-    # TODO in this case check if some components can start
+    # in this case check if some components can start or bind services
     for name in _component_info:
-        if not _component_info[name]['active']:
             for req in _component_info[name]['requires']:
                 if req[1] == service:
-                    print('add_service leads to a component starting test {}'.format(name))
-                    start_component(name)
+                    if not _component_info[name]['active']:
+                        print('add_service leads to a component starting test {}'.format(name))
+                        start_component(name)
+                    else:
+                        if not getattr(_class_binding[name], req[0]):
+                            print('add_service leads to bind a field: {} in {}'.format(req[0], name))
+                            # make the binding
+                            setattr(_class_binding[name], req[0], RemoteObject(provider))
+                            # call the bind field if exists
+                            if req[0] in _component_info[name]['bind_field']:
+                                print('in {}, field {} bound'.format(name, req[0]))
+                                method = _component_info[name]['bind_field'][req[0]]
+                                method(_class_binding[name])
+    return True
+
+
+def remove_component(name):
+    """
+    remove component from app
+
+    :param name: component name
+    """
+    before = get_provided_services()
+
+    _component_info[name]['active'] = False
+
+    # call invalidate
+    _component_info[name]['invalidate'](_class_binding[name])
+
+    after = get_provided_services()
+
+    # TODO check if provided services need to be stopped
+    # if before != after, some services are stopped.
+    # So we need to check if it invalidate other internal components
+    # and send a message through the network to inform peers
+
+
+def remove_service(service, provider):
+    """
+    removes a service provided by an external peer
+
+    :param service: service provided
+    :param provider: service provider
+    :return: True if deleted, False if it doesn't exist
+    """
+    if service not in _external_services:
+        return False
+    if provider not in _external_services[service]:
+        return False
+    _external_services[service].remove(provider)
+
+    # in this case, check if some components must stop
+    for name in _component_info:
+        if _component_info[name]['active']:
+            for req in _component_info[name]['requires']:
+                if req[1] == service:
+                    if req[2]:  # if require optional
+                        # TODO add check if it is possible to change the bound field with an other
+                        # TODO service
+                        print('remove_service leads to a unbind field')
+                        setattr(_class_binding[name], req[0], None)
+                        method = _component_info[name]['unbind_field'][req[0]]
+                        method(_class_binding[name])
+                    else:
+                        print('remove_service leads to a component stop {}'.format(name))
+                        remove_component(name)
+
     return True
 
 
@@ -141,7 +208,11 @@ def start_component(name):
 
     # add required fields if needed
     for req in _component_info[name]['requires']:
-        setattr(_class_binding[name], req[0], RemoteObject(req[1]))
+        service_provider = get_best_service_provider(req[1])
+        if not service_provider:
+            setattr(_class_binding[name], req[0], None)
+        else:
+            setattr(_class_binding[name], req[0], RemoteObject(service_provider))
 
     # call validate
     _component_info[name]['validate'](_class_binding[name])
@@ -182,6 +253,8 @@ def ComponentFactory(factory_name):
         #             _component_info[name]['invalidate'] = field
         _component_info[name]['validate'] = _ipopo_explorer.get('validate', None)
         _component_info[name]['invalidate'] = _ipopo_explorer.get('invalidate', None)
+        _component_info[name]['bind_field'] = _ipopo_explorer.get('bind_field', {})
+        _component_info[name]['unbind_field'] = _ipopo_explorer.get('unbind_field', {})
 
         start_component(name)
 
@@ -209,6 +282,8 @@ def Instantiate(name):
         _component_info[name]['factory'] = name+'_factory'
         _component_info[name]['validate'] = None
         _component_info[name]['invalidate'] = None
+        _component_info[name]['bind_field'] = {}
+        _component_info[name]['unbind_field'] = {}
         _component_info[name]['active'] = False
 
         # rebinds class with name
@@ -219,7 +294,7 @@ def Instantiate(name):
 
 def Validate(function):
     """
-    tells that the function is the component validate function
+    Decorator that Tells the function is the component validate function
 
     :param function: input function
 
@@ -230,13 +305,43 @@ def Validate(function):
 
 def Invalidate(function):
     """
-    tells that the function is the component invalidate function
+    Decorator that Tells the function is the component invalidate function
 
     :param function: input function
 
     """
     _ipopo_explorer['invalidate'] = function
     return function
+
+
+def BindField(require_var):
+    """
+    Decorator that Tells the function is the bindField Function
+
+    :param require_var: variable name of field injected
+    """
+    def decorator(function):
+        if 'bind_field' not in _ipopo_explorer:
+            _ipopo_explorer['bind_field'] = {require_var: function}
+        else:
+            _ipopo_explorer['bind_field'][require_var] = function
+        return function
+    return decorator
+
+
+def UnbindField(require_var):
+    """
+    Decorator that Tells the function is the unbindField Function
+
+    :param require_var: variable name of field injected
+    """
+    def decorator(function):
+        if 'unbind_field' not in _ipopo_explorer:
+            _ipopo_explorer['unbind_field'] = {require_var: function}
+        else:
+            _ipopo_explorer['unbind_field'][require_var] = function
+        return function
+    return decorator
 
 
 def Provides(service):
@@ -339,6 +444,8 @@ def print_ipopo_state():
         print('\t- property {}'.format(_component_info[name]['property']))
         print('\t- validate:{}'.format(_component_info[name]['validate']))
         print('\t- invalidate:{}'.format(_component_info[name]['invalidate']))
+        print('\t- bind:{}'.format(_component_info[name]['bind_field']))
+        print('\t- unbind:{}'.format(_component_info[name]['unbind_field']))
         print('\t- active:{}'.format(_component_info[name]['active']))
     print('-'*30)
 
@@ -350,7 +457,7 @@ def is_component_can_start(component):
     """
     services_required = _component_info[component]['requires']
     for i in services_required:
-        if i not in _external_services:
+        if not get_best_service_provider(i):
             return False
     return True
 
@@ -385,14 +492,29 @@ class RemoteObject:
     then waits for the response.
     """
 
-    def __init__(self, service_name):
-        self.service_name = service_name
+    def __init__(self, service_provider):
+        self.service_provider = service_provider
+
+    def __str__(self):
+        return 'Remote_Service_uuid({})'.format(self.service_provider)
 
     def __getattr__(self, item):
         def foo(*args, **kwargs):
-            print('{}->{}: {} called with parameters {}, {}'.format(
-                self.service_name,
-                get_best_service_provider(self.service_name),
+            # construct request xml string
+            xml_request = xmlrpc.create_request((item, args))
+            print('RPC sending:{}'.format(xml_request))
+
+            # send the request through micro herald
+            # if it receives other message, send it to herald
+            # wait to receive the answer
+            xml_answer = wait_from_message(checker)
+
+            # extract the answer
+            return xmlrpc.extract_answer(xml_answer)
+
+
+            print('{}: {} called with parameters {}, {}'.format(
+                self.service_provider,
                 item,
                 args,
                 kwargs))
@@ -480,3 +602,15 @@ def call_service(service_string, params=[]):
             print('error: component does not have method {}'.format(method))
     else:
         print('error: service with id {} does not exist'.format(service_id))
+
+
+
+def component_execution():
+    """
+
+    execute components if they are active and define a run method
+    """
+    for name in _component_info:
+        if _component_info[name]['active']:
+            if 'run' in dir(_class_binding[name]):
+                _class_binding[name].run()

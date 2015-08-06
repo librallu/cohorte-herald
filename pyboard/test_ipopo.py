@@ -39,6 +39,9 @@ class Led:
         print("LED SET TO OFF")
         self._state = False
 
+    def run(self):
+        print('LED RUNNING')
+
 
 @ComponentFactory('generic_sensor')
 @Property('_id', 'sensor.id', '[TODO] NODE UUID')
@@ -59,7 +62,7 @@ class Sensor:
         print('unlinked with storage')
 
     def run(self):
-        pass
+        print('SENSOR RUNNING')
 
 
 if __name__ == '__main__':
@@ -111,9 +114,16 @@ if __name__ == '__main__':
     print_ipopo_state()
     print('exported: {}'.format(ipopo_exported()))
 
+    ipopo.component_execution()
+
     # trying to access to the imported field
     ipopo._class_binding['sensor.services.sensorService']._store.store(42)
 
+    # removing added service
+    ipopo.remove_service('store.services.storeService', 'DISTANT PEER')
 
+    print_ipopo_state()
+    print('exported: {}'.format(ipopo_exported()))
 
+    ipopo.component_execution()
 
