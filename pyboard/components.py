@@ -2,6 +2,7 @@ from ipopo import ComponentFactory, Provides, Requires, \
     Validate, Invalidate, Instantiate, Property
 
 import pyb
+import time
 
 # pins declarations
 photo_pin = 'X12'
@@ -92,26 +93,41 @@ class Led:
         else:
             self.on()
 
-#
-# @ComponentFactory('sensor-pyboard-factory')
-# @Property('_name', 'sensor.name', 'pyboard sensor')
-# @Requires('_storage', 'sensor.generic.storage')
-# @Instantiate('sensor.services.sensorService')
-# class GenericSensor:
-#     """
-#     Generic sensor for the pyboard.
-#
-#     It allows to send values to a storage service
-#
-#     """
-#
-#     def __init__(self):
-#         pass
-#
-#     @Validate
-#     def validate(self):
-#         print('======= VALIDATE ========')
-#
-#     @Invalidate
-#     def invalidate(self):
-#         print('======= INVALIDATE =======')
+
+@ComponentFactory('sensor-pyboard-factory')
+@Property('_delay', 'request.delay', 5)
+@Requires('_storage', 'sensor.generic.storage')
+@Instantiate('sensor.services.sensorService')
+class GenericSensor:
+    """
+    Generic sensor for the pyboard.
+
+    It allows to send values to a storage service
+
+    """
+
+    def __init__(self):
+        self._delay = None
+        self._last_send = None
+        self._storage = None
+
+    @Validate
+    def validate(self):
+        print('======= VALIDATE SENSOR ========')
+        self._last_send = time.time() - self._delay
+
+    @Invalidate
+    def invalidate(self):
+        print('======= INVALIDATE SENSOR =======')
+        self._last_send = None
+
+    def run(self):
+        """
+        Every self._delay, send sensor information on the storage
+        """
+        if self._last_send + self._delay < time.time():
+            # if the timer is elapsed
+            print('######################## COMPONENT STORES VALUE')
+            self._storage.store(42)
+            self._last_send = time.time()
+

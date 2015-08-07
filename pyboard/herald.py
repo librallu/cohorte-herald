@@ -1,4 +1,5 @@
 import pyb
+from serial_herald_message import *
 
 def wait_for_message(message_checker):
     """
@@ -7,18 +8,38 @@ def wait_for_message(message_checker):
     """
     while True:
         msg = extract_herald_message()
-        if message_checker(msg):
+        if msg and message_checker(msg):
             return msg
         elif msg:
-            print("-- MANAGE MESSAGE PASS MESSAGE"+msg)
+            print("-- MANAGE MESSAGE PASS MESSAGE"+msg.subject)
             manage_message(msg)
+
+
+def fire_content_to(content, subject, destination):
+    """
+    ipopo interface to send content to a destination
+
+    :param content: content to send
+    :param subject: subject for the message
+    :param destination: destination for the message
+    """
+    put_message(
+        SerialHeraldMessage(
+            subject=subject,
+            sender_uid=uid,
+            original_sender=uid,
+            final_destination=destination,
+            content=content,
+        ).to_automata_string(), encapsulate=False
+    )
+
 
 import ipopo
 import xmlrpc
 
 # automata import
 import automata
-from serial_herald_message import *
+
 
 from components import *
 
@@ -166,10 +187,10 @@ def get_step3_response(request, group='all'):
 
 
 def get_contact_answer(request):
-    # TODO add services exported by peer
     rpc_info = xmlrpc.extract_service_description(request.content)
     print('RPC: got {}'.format(rpc_info))
-    # for i in rpc_info:
+    for i in rpc_info:
+        ipopo.add_service(i['spec'], i['uuid'], i['name'])
 
     return get_step3_response(request)
 

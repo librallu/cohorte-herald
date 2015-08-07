@@ -1,6 +1,6 @@
 import pyb  # for randomness
 import xmlrpc
-from herald import wait_for_message
+from herald import wait_for_message, fire_content_to
 # def wait_for_message(msg):
 #     return """
 #     <?xml version='1.0'?>
@@ -552,14 +552,15 @@ class RemoteObject:
             method_name = self.svc_name+'.'+item
             xml_request = xmlrpc.create_request((method_name, args))
             print('RPC sending:{}'.format(xml_request))
+            fire_content_to(xml_request, 'herald/rpc/xmlrpc', self.service_provider)
 
             # send the request through micro herald
             # if it receives other message, send it to herald
             # wait to receive the answer
             def checker(msg):
-                return True
+                return msg.subject == 'herald/rpc/xmlrpc/reply'
 
-            xml_answer = wait_for_message(checker)
+            xml_answer = wait_for_message(checker).content
 
             # extract the answer
             return xmlrpc.extract_answer(xml_answer)

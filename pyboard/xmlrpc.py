@@ -115,7 +115,7 @@ def extract_service_description(content_string):
     for i in content_object:
         res.append(
             {
-                'uuid': i['uid'],
+                'uuid': i['peer'],
                 'spec': i['properties']['objectClass'][0],
                 'name': i['name']
             }

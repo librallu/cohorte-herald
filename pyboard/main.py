@@ -1,5 +1,6 @@
 
 from herald import extract_herald_message, manage_message
+from ipopo import component_execution
 
 
 def main():
@@ -19,6 +20,7 @@ def main():
         msg = extract_herald_message()
         if msg:
             manage_message(msg)
+        component_execution()
 
 
 if __name__ == '__main__':
