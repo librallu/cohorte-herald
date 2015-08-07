@@ -99,7 +99,7 @@ class BluetoothManager:
             sender_uid=self._directory.local_uid,
             original_sender=bean.headers['original_sender'] or self._directory.local_uid,
             final_destination=bean.headers.get('final_destination') or '',
-            content=str(bean.content),
+            content=str(bean.content).replace('\n', ''),
             reply_to='',
             message_uid=bean.uid
         )
@@ -107,14 +107,24 @@ class BluetoothManager:
         return msg
 
     @staticmethod
-    def bluetooth_to_herald(msg):
+    def bluetooth_to_herald(msg, received=True):
         """
         makes a Herald message from a bluetooth message
 
         :param msg: bluetooth message
+        :param received: if true, returns Received Message
         :return: according herald message
         """
-        if msg.reply_to:
+        if received:
+            res = MessageReceived(
+                uid=msg.message_uid,
+                subject=msg.subject,
+                content=msg.content,
+                sender_uid=msg.sender_uid,
+                reply_to=None,
+                access=ACCESS_ID
+            )
+        elif msg.reply_to:
             res = MessageReceived(
                 uid=msg.message_uid,
                 subject=msg.subject,
