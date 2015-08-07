@@ -99,9 +99,9 @@ def main(http_port, peer_name, node_name, app_id):
          'herald.remote.herald_xmlrpc',
 
          # foo service for testing rpc
-         'ping',
-         'testUseCase',
-
+         # 'ping',
+         # 'testUseCase',
+         'usecase',
          ),
         {herald.FWPROP_NODE_UID: node_name,
          herald.FWPROP_NODE_NAME: node_name,

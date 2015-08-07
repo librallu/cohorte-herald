@@ -36,7 +36,7 @@ __docformat__ = "restructuredtext en"
 # ------------------------------------------------------------------------------
 
 from pelix.ipopo.decorators import ComponentFactory, \
-    Validate, Invalidate, Instantiate, Property, Requires
+    Validate, Invalidate, Instantiate, Property, Requires, Provides
 import logging
 import threading
 import time
@@ -103,5 +103,8 @@ class PybTest:
             time.sleep(self._interval)
             # distant call
             self._pyb.toggle()
+
+
+
 
 
