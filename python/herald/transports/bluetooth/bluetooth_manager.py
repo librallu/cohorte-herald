@@ -235,6 +235,7 @@ class BluetoothManager:
             print(mac)
             print(type(mac))
             if not self._coms.has_connection(mac):
+                print('ERROR, NO BLUETOOTH CONNECTION')
                 return False
             print('*'*30)
             self._coms.send_to(mac,

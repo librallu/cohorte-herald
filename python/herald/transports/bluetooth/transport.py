@@ -213,6 +213,6 @@ class BluetoothTransport(object):
 
         # Send a request to each peers
         for peer in peers:
-            self._fire(peer, message)
+            self._fire(peer.get_access(ACCESS_ID).access, message)
 
         return peers
