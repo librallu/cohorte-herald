@@ -1,10 +1,11 @@
 from ipopo import ComponentFactory, Provides, Requires, \
     Validate, Invalidate, Instantiate, Property, print_ipopo_state, \
     RemoteObject, ipopo_exported, service_rpc_string, call_service, \
-    service_name_from_id
+    service_name_from_id, init_ipopo
 
 import ipopo
 from xmlrpc import *
+import serial_herald_message
 
 @ComponentFactory('led-pyboard-factory')
 @Property('_name', 'led.name', 'pyboard led')
@@ -99,6 +100,31 @@ if __name__ == '__main__':
     #     </methodCall>
     # """
     # call_service(*extract_request_info(on_message))
+
+    print('iPOPO initialization')
+
+    def wait_for_message(msg):
+
+        return serial_herald_message.SerialHeraldMessage(
+            subject='herald/rpc/xmlrpc',
+            sender_uid='DISTANT PEER',
+            original_sender='DISTANT PEER',
+            final_destination='LOCAL PEER',
+            content = """
+                    <?xml version='1.0'?>
+                        <methodResponse>
+                        <params>
+                            <param>
+                                <value><int>78</int></value>
+                            </param>
+                            <param>
+                                <value><string>hello world !</string></value>
+                            </param>
+                        </params>
+                    </methodResponse>"""
+        )
+
+    init_ipopo(wait_for_message, lambda a, b, c: None)
 
     # test ipopo state
     print_ipopo_state()

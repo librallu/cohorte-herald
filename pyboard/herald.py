@@ -1,53 +1,42 @@
 import pyb
 from serial_herald_message import *
 
-def wait_for_message(message_checker):
-    """
-    blocking call to get a message
-    :return: message received
-    """
-    while True:
-        msg = extract_herald_message()
-        if msg and message_checker(msg):
-            return msg
-        elif msg:
-            print("-- MANAGE MESSAGE PASS MESSAGE"+msg.subject)
-            manage_message(msg)
-
-
-def fire_content_to(content, subject, destination):
-    """
-    ipopo interface to send content to a destination
-
-    :param content: content to send
-    :param subject: subject for the message
-    :param destination: destination for the message
-    """
-    put_message(
-        SerialHeraldMessage(
-            subject=subject,
-            sender_uid=uid,
-            original_sender=uid,
-            final_destination=destination,
-            content=content,
-        ).to_automata_string(), encapsulate=False
-    )
-
-
 import ipopo
 import xmlrpc
 
 # automata import
 import automata
 
+import pyb
 
-from components import *
+
+def gen_node_uid():
+    """
+    :return: string representing the node UID of the pyboard
+        Format like "f07569ba-77ab-4f01-a041-c86c6b58c3cd"
+    """
+
+    def gen_rand_hexa():
+        return hex(pyb.rng() % 16)[2:]
+
+    res = ''
+    for i in range(0, 8):
+        res += gen_rand_hexa()
+    res += '-'
+    for j in range(0, 3):
+        for i in range(0, 4):
+            res += gen_rand_hexa()
+        res += '-'
+    for i in range(0, 12):
+        res += gen_rand_hexa()
+    return res
+
 
 # bluetooth connection initialization
 uart = pyb.UART(1, 38400)
 
 # define node uid for the pyboard
-uid = ipopo.gen_node_uid()
+uid = gen_node_uid()
 # use mac address of the bluetooth module (fixed)
 mac = '20:14:03:19:88:23'
 # automata for reading bluetooth flow
@@ -66,27 +55,6 @@ def get_message_uart():
         print('UART RECEIVED: {}'.format(message))
         return message
     return None
-
-
-def set_led(value):
-    """
-    set the led to a given value
-
-    :param value: True for ON, False for OFF
-    :return: None
-
-    """
-    if value:
-        pyb.Pin(led_pin, pyb.Pin.OUT_PP).high()
-    else:
-        pyb.Pin(led_pin, pyb.Pin.OUT_PP).low()
-
-
-def get_photo_value():
-    """
-    :return: photoreceptor value as a string
-    """
-    return str(pyb.ADC(photo_pin).read())
 
 
 def put_message(message, encapsulate=True):

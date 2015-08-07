@@ -1,4 +1,6 @@
-
+"""
+micronode xmlrpc file.
+"""
 
 def extract_answer(xml_string):
     """
@@ -151,9 +153,18 @@ if __name__ == '__main__':
     """
     print(extract_request_info(s2))
 
-    mac="ADRESSE MAC"
-    uid="DISTANT UID"
+    mac = "ADRESSE MAC"
+    uid = "DISTANT UID"
 
-    content = """[{'uid':'86006913-0197-56a2-d8f7-0e490f54617a','properties':{'service.ranking':0,'herald.rpc.subject':'herald/rpc/xmlrpc','objectClass':['pyboard.led.ledService'],'herald.rpc.peer':'86006913-0197-56a2-d8f7-0e490f54617a','instance.name':'pyboard.led.ledService','service.imported':True,'service.imported.configs':('herald-xmlrpc',),'endpoint.framework.uuid':'86006913-0197-56a2-d8f7-0e490f54617a','endpoint.service.id':0},'name':'service_0','specifications':['python:/pyboard.led.ledService'],'configurations':('herald-xmlrpc',),'peer':'86006913-0197-56a2-d8f7-0e490f54617a'}]"""
+    content = """[{'uid':'86006913-0197-56a2-d8f7-0e490f54617a','properties':
+    {'service.ranking':0,'herald.rpc.subject':'herald/rpc/xmlrpc','objectClass':
+    ['pyboard.led.ledService'],'herald.rpc.peer':
+    '86006913-0197-56a2-d8f7-0e490f54617a','instance.name':
+    'pyboard.led.ledService','service.imported':True,
+    'service.imported.configs':('herald-xmlrpc',),
+    'endpoint.framework.uuid':'86006913-0197-56a2-d8f7-0e490f54617a',
+    'endpoint.service.id':0},'name':'service_0','specifications':
+    ['python:/pyboard.led.ledService'],'configurations':('herald-xmlrpc',),
+    'peer':'86006913-0197-56a2-d8f7-0e490f54617a'}]"""
 
     print(extract_service_description(content))

@@ -1,19 +1,6 @@
 import pyb  # for randomness
 import xmlrpc
-from herald import wait_for_message, fire_content_to
-# def wait_for_message(msg):
-#     return """
-#     <?xml version='1.0'?>
-#         <methodResponse>
-#         <params>
-#             <param>
-#                 <value><int>78</int></value>
-#             </param>
-#             <param>
-#                 <value><string>hello world !</string></value>
-#             </param>
-#         </params>
-#     </methodResponse>"""
+
 
 """
 A component can have following decorators :
@@ -54,6 +41,12 @@ _internal_services = {}
 # service name -> service provider -> service spec
 _service_name_spec = {}
 
+
+def init_ipopo(wait_for_message_param, fire_content_to_param):
+    global wait_for_message
+    global fire_content_to
+    wait_for_message = wait_for_message_param
+    fire_content_to = fire_content_to_param
 
 def get_name(input_class):
     """
@@ -571,29 +564,6 @@ class RemoteObject:
                 args,
                 kwargs))
         return foo
-
-
-def gen_node_uid():
-    """
-    :return: string representing the node UID of the pyboard
-        Format like "f07569ba-77ab-4f01-a041-c86c6b58c3cd"
-    """
-
-    def gen_rand_hexa():
-        return hex(pyb.rng() % 16)[2:]
-
-    res = ''
-    for i in range(0, 8):
-        res += gen_rand_hexa()
-    res += '-'
-    for j in range(0, 3):
-        for i in range(0, 4):
-            res += gen_rand_hexa()
-        res += '-'
-    for i in range(0, 12):
-        res += gen_rand_hexa()
-    return res
-
 
 
 def service_rpc_string(service, uid):
