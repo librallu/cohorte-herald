@@ -109,7 +109,7 @@ if __name__ == '__main__':
 
     # adding a service
     print('trying injecting a service required:')
-    ipopo.add_service('store.services.storeService', 'DISTANT PEER')
+    ipopo.add_service('store.services.storeService', 'DISTANT PEER', 'service_42')
 
     print_ipopo_state()
     print('exported: {}'.format(ipopo_exported()))

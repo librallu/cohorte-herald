@@ -1,6 +1,20 @@
 import pyb  # for randomness
 import xmlrpc
-from main import wait_for_message
+from herald import wait_for_message
+# def wait_for_message(msg):
+#     return """
+#     <?xml version='1.0'?>
+#         <methodResponse>
+#         <params>
+#             <param>
+#                 <value><int>78</int></value>
+#             </param>
+#             <param>
+#                 <value><string>hello world !</string></value>
+#             </param>
+#         </params>
+#     </methodResponse>"""
+
 """
 A component can have following decorators :
 
@@ -19,8 +33,6 @@ Services are represented by strings.
 
 """
 
-
-
 # ===== GLOBAL VARIABLES =====
 
 # services provided in the application
@@ -38,6 +50,9 @@ _component_info = {}
 _id_counter = 0
 
 _internal_services = {}
+
+# service name -> service provider -> service spec
+_service_name_spec = {}
 
 
 def get_name(input_class):
@@ -92,12 +107,41 @@ def get_best_service_provider(name):
         return get_external_service_uuid(name)
 
 
-def add_service(service, provider):
+def add_service_name_binding(svc, provider, name):
+    """
+    adds in ipopo service name binding
+
+    :param svc: specification
+    :param provider: service provider
+    :param name: service name
+    """
+    if provider not in _service_name_spec:
+        _service_name_spec[provider] = {}
+    _service_name_spec[provider][svc] = name
+
+
+def get_service_name_binding(svc, provider):
+    """
+    return name for service provided by provider.
+
+    :param svc: specification
+    :param provider: service provider
+    :return: service name None if any
+    """
+    if provider not in _service_name_spec:
+        return None
+    if svc not in _service_name_spec[provider]:
+        return None
+    return _service_name_spec[provider][svc]
+
+
+def add_service(service, provider, name):
     """
     adds a service provided by an external peer
 
     :param service: service provided
     :param provider: service provider
+    :param name: service name
     :return: True if added, False if it already exists
     """
     if service in _external_services:
@@ -107,6 +151,8 @@ def add_service(service, provider):
             return False
     else:
         _external_services[service] = [provider]
+
+    add_service_name_binding(service, provider, name)
 
     # in this case check if some components can start or bind services
     for name in _component_info:
@@ -119,7 +165,7 @@ def add_service(service, provider):
                         if not getattr(_class_binding[name], req[0]):
                             print('add_service leads to bind a field: {} in {}'.format(req[0], name))
                             # make the binding
-                            setattr(_class_binding[name], req[0], RemoteObject(provider))
+                            setattr(_class_binding[name], req[0], RemoteObject(provider, name))
                             # call the bind field if exists
                             if req[0] in _component_info[name]['bind_field']:
                                 print('in {}, field {} bound'.format(name, req[0]))
@@ -212,7 +258,8 @@ def start_component(name):
         if not service_provider:
             setattr(_class_binding[name], req[0], None)
         else:
-            setattr(_class_binding[name], req[0], RemoteObject(service_provider))
+            svc_name = get_service_name_binding(req[1], service_provider)
+            setattr(_class_binding[name], req[0], RemoteObject(service_provider, svc_name))
 
     # call validate
     _component_info[name]['validate'](_class_binding[name])
@@ -492,8 +539,9 @@ class RemoteObject:
     then waits for the response.
     """
 
-    def __init__(self, service_provider):
+    def __init__(self, service_provider, svc_name):
         self.service_provider = service_provider
+        self.svc_name = svc_name
 
     def __str__(self):
         return 'Remote_Service_uuid({})'.format(self.service_provider)
@@ -501,7 +549,8 @@ class RemoteObject:
     def __getattr__(self, item):
         def foo(*args, **kwargs):
             # construct request xml string
-            xml_request = xmlrpc.create_request((item, args))
+            method_name = self.svc_name+'.'+item
+            xml_request = xmlrpc.create_request((method_name, args))
             print('RPC sending:{}'.format(xml_request))
 
             # send the request through micro herald
