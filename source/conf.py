@@ -296,4 +296,5 @@ import os
 
 path.append(os.getcwd()+'/../python/')
 path.append(os.getcwd()+'/../pyboard/')
+path.append(os.getcwd()+'/../')
 

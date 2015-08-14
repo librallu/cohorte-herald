@@ -50,8 +50,44 @@ Table des Matières
    bluetooth
    micronode
    usecase
+   
+   
+ 
 
+Points d'entrée de Cohorte Routing
+==================================
 
+Cohorte Routing a nécessité de modifier les sources de Herald à 
+quelques endroits :
+
+ - herald/core.py : dans les méthodes d'envoi de message (fire).
+   est modifié. On rajoute une conditionelle qui permet
+   de tester si le message est un message doit passer
+   par le routing. Si il s'agit d'un
+   message devant être routé, la destination sera modifiée en
+   fonction de la réponse des éventuels composants de routage. 
+   L'ancienne méthode *fire* a été renommée en *_fire*.
+
+ - herald/core.py : handle_message : modifications effectuées
+   pour ne pas propager au reste de l'application les messages
+   de routage et les interpréter.
+  
+ - herald.remote.discovery : modification de quelques méthodes
+   pour insérer des headers supplémentaires dans les messages
+   afin de gérer le routing. Deux champs supplémentaires sont
+   utilisés par le routage : 'original_sender' et 'final_destination'.
+   Ces champs, correspondent aux deux extrémités du message de routage.
+   
+   Exemple : Admettons qu'un message circule de A vers B vers C vers D.
+   Lorsqu'il arrivera à C, le message aura les champs suivants :
+     
+     - destination: C
+     - sender: B
+     - original sender: A
+     - final destination: D
+
+Par souci de compatibilité avec les versions précédentes, les altérations
+de comportement sont prévues pour ne pas perturber le reste de l'application.
 
 Indices and tables
 ==================
