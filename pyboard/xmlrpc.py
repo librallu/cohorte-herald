@@ -51,7 +51,9 @@ def extract_request_info(request_content):
     """
     extract information from request
 
-        examples:
+    examples:
+
+    .. parsed-literal::
         <?xml version='1.0'?>
         <methodCall>
             <methodName>service_29.ping</methodName>
@@ -61,12 +63,13 @@ def extract_request_info(request_content):
             </params>
         </methodCall>
 
-        returns (service_29.ping, [42])
+    returns (service_29.ping, [42])
 
     :param request_content: content of the request
     :return: tuple (a,b)
         - a: method name
         - b: list of args
+
     """
     method = request_content.split('<methodName>')[1].split('</methodName>')[0]
     values = request_content.split('<value>')

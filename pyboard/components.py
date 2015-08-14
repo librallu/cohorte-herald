@@ -123,8 +123,10 @@ class GenericSensor:
 
     def run(self):
         """
+        MULTITACHE COOPERATIF !
         Every self._delay, send sensor information on the storage
         """
+        # TODO
         if self._last_send + self._delay < time.time():
             # if the timer is elapsed
             print('######################## COMPONENT STORES VALUE')
